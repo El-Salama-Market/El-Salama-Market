@@ -1240,8 +1240,8 @@
                 التواصل 💬
             </button>
 
-            <button class="btn-nav" onclick="accessAdmin()">
-                الإدارة 🔒
+            <button class="btn-nav" onclick="showSection('admin')">
+                الإدارة ⚙️
             </button>
 
         </div>
@@ -1733,14 +1733,6 @@
                 💬 محادثات العملاء (واتساب)
             </button>
 
-            <button
-                class="admin-tab-btn"
-                id="btn-tab-settings"
-                onclick="switchAdminTab('admin-tab-settings', this)"
-            >
-                🔒 تغيير كلمة السر
-            </button>
-
         </div>
 
         <!-- الطلبات -->
@@ -2015,56 +2007,6 @@
 
         </div>
 
-        <!-- الإعدادات -->
-
-        <div
-            id="admin-tab-settings"
-            class="admin-tab-content"
-        >
-
-            <h3>
-                🔒 تغيير كلمة سر الإدارة
-            </h3>
-
-            <div
-                style="
-                    max-width:400px;
-                    margin-top:15px;
-                "
-            >
-
-                <input
-                    type="password"
-                    id="old-pass"
-                    class="form-control"
-                    placeholder="كلمة السر القديمة"
-                >
-
-                <input
-                    type="password"
-                    id="new-pass"
-                    class="form-control"
-                    placeholder="كلمة السر الجديدة"
-                >
-
-                <input
-                    type="password"
-                    id="confirm-pass"
-                    class="form-control"
-                    placeholder="تأكيد كلمة السر الجديدة"
-                >
-
-                <button
-                    class="btn-submit"
-                    onclick="changeAdminPassword()"
-                >
-                    حفظ كلمة السر الجديدة
-                </button>
-
-            </div>
-
-        </div>
-
     </div>
 
 </div>
@@ -2087,9 +2029,6 @@
 
     let cloudReady = false;
     let cloudSyncTimer = null;
-
-    let adminPassword = '';
-    let adminAuthenticated = false;
 
     let currentCategory = 'all';
 
@@ -2812,45 +2751,7 @@
     }
 
 
-    /* ================= الإدارة (مُصلحة بالكامل) ================= */
-
-    async function accessAdmin() {
-
-        const pass = prompt('ادخل كلمة سر الإدارة:');
-
-        if (pass === null || pass.trim() === '') return;
-
-        if (!cloudReady) {
-            alert('الموقع غير متصل بقاعدة البيانات. حاول مرة أخرى بعد قليل.');
-            return;
-        }
-
-        try {
-            // تفكيك data و error بشكل مباشر
-            const { data: isValid, error: rpcError } = await supabaseClient.rpc(
-                'verify_admin_password',
-                { entered_password: pass }
-            );
-
-            if (rpcError) {
-                console.error('RPC Error:', rpcError);
-                alert('حدث خطأ في الاتصال بقاعدة البيانات.');
-                return;
-            }
-
-            if (isValid === true) {
-                adminPassword = '';
-                adminAuthenticated = true;
-                showSection('admin');
-            } else {
-                alert('كلمة السر غير صحيحة!');
-            }
-        } catch (error) {
-            console.error('Admin login error:', error);
-            alert('تعذر التحقق من كلمة السر. تأكد من الاتصال بقاعدة البيانات.');
-        }
-    }
-
+    /* ================= الإدارة ================= */
 
     function switchAdminTab(tabId, btn) {
 
@@ -3278,66 +3179,6 @@
             'إضافة المنتج';
     }
 
-
-    /* ================= تغيير كلمة سر الإدارة (مُصلحة بالكامل) ================= */
-
-    async function changeAdminPassword() {
-
-        const oldP = document.getElementById('old-pass').value.trim();
-        const newP = document.getElementById('new-pass').value.trim();
-        const confirmP = document.getElementById('confirm-pass').value.trim();
-
-        if (!oldP || !newP || !confirmP) {
-            alert('برجاء ملء جميع خانات كلمة السر!');
-            return;
-        }
-
-        if (newP.length < 3) {
-            alert('برجاء كتابة كلمة سر جديدة صحيحة!');
-            return;
-        }
-
-        if (newP !== confirmP) {
-            alert('كلمة السر الجديدة وتأكيدها غير متطابقين!');
-            return;
-        }
-
-        if (!cloudReady) {
-            alert('الموقع غير متصل بقاعدة البيانات!');
-            return;
-        }
-
-        try {
-            // تفكيك data و error من الاستدعاء السحابي المباشر
-            const { data: isSuccess, error: changeError } = await supabaseClient.rpc(
-                'change_admin_password',
-                {
-                    old_password: oldP,
-                    new_password: newP
-                }
-            );
-
-            if (changeError) {
-                console.error('Change RPC Error:', changeError);
-                alert('حدث خطأ في الاتصال بقاعدة البيانات.');
-                return;
-            }
-
-            if (isSuccess === true) {
-                document.getElementById('old-pass').value = '';
-                document.getElementById('new-pass').value = '';
-                document.getElementById('confirm-pass').value = '';
-
-                alert('تم تغيير كلمة السر بنجاح! يمكنك الآن الدخول بكلمة السر الجديدة من أي جهاز.');
-            } else {
-                alert('كلمة السر القديمة غير صحيحة!');
-            }
-
-        } catch (error) {
-            console.error('Password change error:', error);
-            alert('تعذر تغيير كلمة السر. تأكد من الاتصال بقاعدة البيانات.');
-        }
-    }
 
     /* =========================================================
        نظام الشات
