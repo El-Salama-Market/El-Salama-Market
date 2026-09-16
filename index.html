@@ -2088,8 +2088,6 @@
     let cloudReady = false;
     let cloudSyncTimer = null;
 
-    // كلمة سر الإدارة لا تُخزن على الجهاز إطلاقاً.
-    // المصدر الوحيد لكلمة السر هو Supabase، لذلك تغييرها يطبق على كل الأجهزة.
     let adminPassword = '';
     let adminAuthenticated = false;
 
@@ -2156,8 +2154,6 @@
 
     /* ================= حفظ ومزامنة البيانات ================= */
 
-    // البيانات المشتركة بين كل الأجهزة يتم حفظها في Supabase.
-    // localStorage يستخدم فقط كنسخة مؤقتة على نفس الجهاز.
     async function saveData() {
         localStorage.setItem('salama_products', JSON.stringify(products));
         localStorage.setItem('salama_orders', JSON.stringify(orders));
@@ -2195,7 +2191,6 @@
             if (error) throw error;
 
             if (data) {
-                // مهم: عند فتح الموقع نستخدم نسخة السحابة، وليس نسخة الهاتف.
                 if (Array.isArray(data.products)) products = data.products;
                 if (Array.isArray(data.orders)) orders = data.orders;
                 if (Array.isArray(data.chats)) chatMessages = data.chats;
@@ -2204,7 +2199,6 @@
                 localStorage.setItem('salama_orders', JSON.stringify(orders));
                 localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
             } else {
-                // لا توجد بيانات سحابية بعد: أنشئ السجل لأول مرة.
                 const { error: insertError } = await supabaseClient
                     .from('site_data')
                     .insert({
@@ -2224,7 +2218,7 @@
         } catch (error) {
             cloudReady = false;
             console.error('Cloud load error:', error);
-            alert('تعذر الاتصال بقاعدة البيانات المشتركة. لن يتم حفظ تغييرات الإدارة حتى يتم إصلاح اتصال Supabase.');
+            alert('تعذر الاتصال بقاعدة البيانات المشتركة.');
             return false;
         }
     }
@@ -2265,7 +2259,6 @@
     function startCloudSync() {
         if (cloudSyncTimer) clearInterval(cloudSyncTimer);
 
-        // كل جهاز يعيد قراءة البيانات المشتركة كل ثانيتين.
         cloudSyncTimer = setInterval(() => {
             refreshCloudData();
         }, 2000);
@@ -2819,7 +2812,7 @@
     }
 
 
-    /* ================= الإدارة ================= */
+    /* ================= الإدارة (مُصلحة بالكامل) ================= */
 
     async function accessAdmin() {
 
@@ -2833,16 +2826,19 @@
         }
 
         try {
-            // التحقق من كلمة السر من Supabase مباشرة، وليس من localStorage.
-            // لذلك نفس كلمة السر تعمل على جميع الهواتف والأجهزة.
-            const { data, error } = await supabaseClient.rpc(
+            // تفكيك data و error بشكل مباشر
+            const { data: isValid, error: rpcError } = await supabaseClient.rpc(
                 'verify_admin_password',
                 { entered_password: pass }
             );
 
-            if (error) throw error;
+            if (rpcError) {
+                console.error('RPC Error:', rpcError);
+                alert('حدث خطأ في الاتصال بقاعدة البيانات.');
+                return;
+            }
 
-            if (data === true) {
+            if (isValid === true) {
                 adminPassword = '';
                 adminAuthenticated = true;
                 showSection('admin');
@@ -3179,7 +3175,6 @@
         }
 
         try {
-            // لا نعرض نجاح العملية إلا بعد وصول التغيير إلى Supabase.
             await saveData();
             resetAdminForm();
             renderAdminProducts();
@@ -3187,7 +3182,7 @@
             alert('تم حفظ المنتج بنجاح على الموقع لكل الأجهزة!');
         } catch (error) {
             console.error('Product save error:', error);
-            alert('فشل حفظ المنتج في قاعدة البيانات. لم يتم تأكيد الإضافة على الأجهزة الأخرى.');
+            alert('فشل حفظ المنتج في قاعدة البيانات.');
             await refreshCloudData();
         }
     }
@@ -3284,11 +3279,13 @@
     }
 
 
+    /* ================= تغيير كلمة سر الإدارة (مُصلحة بالكامل) ================= */
+
     async function changeAdminPassword() {
 
-        const oldP = document.getElementById('old-pass').value;
-        const newP = document.getElementById('new-pass').value;
-        const confirmP = document.getElementById('confirm-pass').value;
+        const oldP = document.getElementById('old-pass').value.trim();
+        const newP = document.getElementById('new-pass').value.trim();
+        const confirmP = document.getElementById('confirm-pass').value.trim();
 
         if (!oldP || !newP || !confirmP) {
             alert('برجاء ملء جميع خانات كلمة السر!');
@@ -3311,21 +3308,8 @@
         }
 
         try {
-            // 1. التحقق المباشر من قاعدة البيانات المركزية لضمان أن كلمة السر القديمة صحيحة
-            const { data: isOldCorrect, error: verifyError } = await supabaseClient.rpc(
-                'verify_admin_password',
-                { entered_password: oldP }
-            );
-
-            if (verifyError) throw verifyError;
-
-            if (isOldCorrect !== true) {
-                alert('كلمة السر القديمة غير صحيحة!');
-                return;
-            }
-
-            // 2. تحديث كلمة السر في Supabase مباشرة ليتأثر بها كل مستخدم أو موبايل فوراً
-            const { data: changeSuccess, error: changeError } = await supabaseClient.rpc(
+            // تفكيك data و error من الاستدعاء السحابي المباشر
+            const { data: isSuccess, error: changeError } = await supabaseClient.rpc(
                 'change_admin_password',
                 {
                     old_password: oldP,
@@ -3333,32 +3317,22 @@
                 }
             );
 
-            if (changeError) throw changeError;
+            if (changeError) {
+                console.error('Change RPC Error:', changeError);
+                alert('حدث خطأ في الاتصال بقاعدة البيانات.');
+                return;
+            }
 
-            if (changeSuccess === true) {
-                // لا نحفظ كلمة السر الجديدة في local/جهاز واحد
-                adminPassword = '';
-
-                // التأكد مجدداً من تطبيقها الخارجي
-                const { data: verifyNew, error: verifyNewError } = await supabaseClient.rpc(
-                    'verify_admin_password',
-                    { entered_password: newP }
-                );
-
-                if (verifyNewError) throw verifyNewError;
-
-                if (verifyNew !== true) {
-                    throw new Error('Password changed but verification failed');
-                }
-
+            if (isSuccess === true) {
                 document.getElementById('old-pass').value = '';
                 document.getElementById('new-pass').value = '';
                 document.getElementById('confirm-pass').value = '';
 
-                alert('تم تغيير كلمة السر بنجاح على قاعدة البيانات وبشكل كلي لجميع الأجهزة!');
+                alert('تم تغيير كلمة السر بنجاح! يمكنك الآن الدخول بكلمة السر الجديدة من أي جهاز.');
             } else {
-                alert('فشل تغيير كلمة السر.');
+                alert('كلمة السر القديمة غير صحيحة!');
             }
+
         } catch (error) {
             console.error('Password change error:', error);
             alert('تعذر تغيير كلمة السر. تأكد من الاتصال بقاعدة البيانات.');
