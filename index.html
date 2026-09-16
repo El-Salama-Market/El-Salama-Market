@@ -2153,50 +2153,86 @@
     let selectedAdminUserId = null;
 
 
-    /* ================= حفظ البيانات ================= */
+    /* ================= حفظ ومزامنة البيانات ================= */
 
+    // البيانات المشتركة بين كل الأجهزة يتم حفظها في Supabase.
+    // localStorage يستخدم فقط كنسخة مؤقتة على نفس الجهاز.
     async function saveData() {
+        localStorage.setItem('salama_products', JSON.stringify(products));
+        localStorage.setItem('salama_orders', JSON.stringify(orders));
+        localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
+        localStorage.setItem('salama_admin_pass', adminPassword);
 
-        localStorage.setItem(
-            'salama_products',
-            JSON.stringify(products)
-        );
-
-        localStorage.setItem(
-            'salama_orders',
-            JSON.stringify(orders)
-        );
-
-        localStorage.setItem(
-            'salama_chats',
-            JSON.stringify(chatMessages)
-        );
-
-        localStorage.setItem(
-            'salama_admin_pass',
-            adminPassword
-        );
-
-        if (!cloudReady) return;
-
-        try {
-            const { error } = await supabaseClient
-                .from('site_data')
-                .upsert({
-                    id: 1,
-                    products: products,
-                    orders: orders,
-                    chats: chatMessages,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'id' });
-
-            if (error) throw error;
-        } catch (error) {
-            console.error('Cloud save error:', error);
+        if (!cloudReady) {
+            throw new Error('الاتصال بقاعدة البيانات غير جاهز');
         }
+
+        const { error } = await supabaseClient
+            .from('site_data')
+            .upsert({
+                id: 1,
+                products: products,
+                orders: orders,
+                chats: chatMessages,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+        if (error) {
+            console.error('Cloud save error:', error);
+            throw error;
+        }
+
+        return true;
     }
 
     async function loadCloudData() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('site_data')
+                .select('id, products, orders, chats, updated_at')
+                .eq('id', 1)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+                // مهم: عند فتح الموقع نستخدم نسخة السحابة، وليس نسخة الهاتف.
+                if (Array.isArray(data.products)) products = data.products;
+                if (Array.isArray(data.orders)) orders = data.orders;
+                if (Array.isArray(data.chats)) chatMessages = data.chats;
+
+                localStorage.setItem('salama_products', JSON.stringify(products));
+                localStorage.setItem('salama_orders', JSON.stringify(orders));
+                localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
+            } else {
+                // لا توجد بيانات سحابية بعد: أنشئ السجل لأول مرة.
+                const { error: insertError } = await supabaseClient
+                    .from('site_data')
+                    .insert({
+                        id: 1,
+                        products: products,
+                        orders: orders,
+                        chats: chatMessages,
+                        updated_at: new Date().toISOString()
+                    });
+
+                if (insertError) throw insertError;
+            }
+
+            cloudReady = true;
+            console.log('Supabase connected successfully.');
+            return true;
+        } catch (error) {
+            cloudReady = false;
+            console.error('Cloud load error:', error);
+            alert('تعذر الاتصال بقاعدة البيانات المشتركة. لن يتم حفظ تغييرات الإدارة حتى يتم إصلاح اتصال Supabase.');
+            return false;
+        }
+    }
+
+    async function refreshCloudData() {
+        if (!cloudReady) return false;
+
         try {
             const { data, error } = await supabaseClient
                 .from('site_data')
@@ -2205,52 +2241,35 @@
                 .maybeSingle();
 
             if (error) throw error;
+            if (!data) return false;
 
-            if (data) {
-                if (Array.isArray(data.products)) products = data.products;
-                if (Array.isArray(data.orders)) orders = data.orders;
-                if (Array.isArray(data.chats)) chatMessages = data.chats;
-            } else {
-                await supabaseClient.from('site_data').insert({
-                    id: 1,
-                    products: products,
-                    orders: orders,
-                    chats: chatMessages,
-                    updated_at: new Date().toISOString()
-                });
-            }
+            if (Array.isArray(data.products)) products = data.products;
+            if (Array.isArray(data.orders)) orders = data.orders;
+            if (Array.isArray(data.chats)) chatMessages = data.chats;
 
-            cloudReady = true;
-            await saveData();
+            localStorage.setItem('salama_products', JSON.stringify(products));
+            localStorage.setItem('salama_orders', JSON.stringify(orders));
+            localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
+
+            renderProducts();
+            if (typeof renderOrders === 'function') renderOrders();
+            if (typeof renderCustomerChat === 'function') renderCustomerChat();
+            if (typeof renderAdminSidebar === 'function') renderAdminSidebar();
+            if (typeof renderAdminChat === 'function') renderAdminChat();
+            return true;
         } catch (error) {
-            console.error('Cloud load error:', error);
-            cloudReady = false;
+            console.error('Cloud refresh error:', error);
+            return false;
         }
     }
 
     function startCloudSync() {
         if (cloudSyncTimer) clearInterval(cloudSyncTimer);
-        cloudSyncTimer = setInterval(async () => {
-            if (!cloudReady) return;
-            try {
-                const { data, error } = await supabaseClient
-                    .from('site_data')
-                    .select('products, orders, chats')
-                    .eq('id', 1)
-                    .maybeSingle();
-                if (error || !data) return;
-                if (Array.isArray(data.products)) products = data.products;
-                if (Array.isArray(data.orders)) orders = data.orders;
-                if (Array.isArray(data.chats)) chatMessages = data.chats;
-                renderProducts();
-                if (typeof renderOrders === 'function') renderOrders();
-                if (typeof renderCustomerChat === 'function') renderCustomerChat();
-                if (typeof renderAdminSidebar === 'function') renderAdminSidebar();
-                if (typeof renderAdminChat === 'function') renderAdminChat();
-            } catch (error) {
-                console.error('Cloud sync error:', error);
-            }
-        }, 5000);
+
+        // كل جهاز يعيد قراءة البيانات المشتركة كل ثانيتين.
+        cloudSyncTimer = setInterval(() => {
+            refreshCloudData();
+        }, 2000);
     }
 
     /* ================= المنتجات ================= */
@@ -3102,101 +3121,57 @@
     }
 
 
-    function saveProduct() {
+    async function saveProduct() {
 
-        const id =
-            document.getElementById(
-                'edit-prod-id'
-            ).value;
+        if (!cloudReady) {
+            alert('الموقع غير متصل بقاعدة البيانات. لا يمكن إضافة المنتج الآن.');
+            return;
+        }
 
-        const name =
-            document.getElementById(
-                'p-name'
-            ).value;
-
-        const price =
-            parseFloat(
-                document.getElementById(
-                    'p-price'
-                ).value
-            );
-
-        const img =
-            document.getElementById(
-                'p-img'
-            ).value;
-
-        const category =
-            document.getElementById(
-                'p-cat'
-            ).value;
+        const id = document.getElementById('edit-prod-id').value;
+        const name = document.getElementById('p-name').value.trim();
+        const price = parseFloat(document.getElementById('p-price').value);
+        const img = document.getElementById('p-img').value.trim();
+        const category = document.getElementById('p-cat').value;
 
         if (!name || isNaN(price)) {
-
-            alert(
-                'برجاء إدخال بيانات صحيحة'
-            );
-
+            alert('برجاء إدخال بيانات صحيحة');
             return;
         }
 
         if (id) {
-
-            const index =
-                products.findIndex(
-                    p => p.id == id
-                );
+            const index = products.findIndex(p => p.id == id);
+            if (index === -1) return;
 
             products[index] = {
-
-                id:
-                    parseInt(id),
-
-                name:
-                    name,
-
-                price:
-                    price,
-
-                category:
-                    category,
-
-                img:
-                    img
+                id: parseInt(id),
+                name: name,
+                price: price,
+                category: category,
+                img: img
             };
-
         } else {
-
             products.push({
-
-                id:
-                    Date.now(),
-
-                name:
-                    name,
-
-                price:
-                    price,
-
-                category:
-                    category,
-
-                img:
-                    img
+                id: Date.now(),
+                name: name,
+                price: price,
+                category: category,
+                img: img
             });
         }
 
-        saveData();
-
-        resetAdminForm();
-
-        renderAdminProducts();
-
-        renderProducts();
-
-        alert(
-            'تم حفظ المنتج بنجاح!'
-        );
+        try {
+            // لا نعرض نجاح العملية إلا بعد وصول التغيير إلى Supabase.
+            await saveData();
+            resetAdminForm();
+            renderAdminProducts();
+            renderProducts();
+            alert('تم حفظ المنتج بنجاح على الموقع لكل الأجهزة!');
+        } catch (error) {
+            console.error('Product save error:', error);
+            alert('فشل حفظ المنتج في قاعدة البيانات. لم يتم تأكيد الإضافة على الأجهزة الأخرى.');
+            await refreshCloudData();
+        }
     }
 
 
@@ -3241,24 +3216,27 @@
     }
 
 
-    function deleteProduct(id) {
+    async function deleteProduct(id) {
 
-        if (
-            confirm(
-                'هل أنت تأكد من حذف هذا المنتج؟'
-            )
-        ) {
+        if (!cloudReady) {
+            alert('الموقع غير متصل بقاعدة البيانات.');
+            return;
+        }
 
-            products =
-                products.filter(
-                    p => p.id !== id
-                );
+        if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+            const oldProducts = products;
+            products = products.filter(p => p.id !== id);
 
-            saveData();
-
-            renderAdminProducts();
-
-            renderProducts();
+            try {
+                await saveData();
+                renderAdminProducts();
+                renderProducts();
+            } catch (error) {
+                console.error('Product delete error:', error);
+                products = oldProducts;
+                alert('فشل حذف المنتج من قاعدة البيانات.');
+                await refreshCloudData();
+            }
         }
     }
 
