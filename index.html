@@ -2088,9 +2088,10 @@
     let cloudReady = false;
     let cloudSyncTimer = null;
 
+    // كلمة سر الإدارة يتم التحقق منها من Supabase.
+    // localStorage هنا مجرد ذاكرة مؤقتة وليست مصدر الصلاحية.
     let adminPassword =
-        localStorage.getItem('salama_admin_pass') ||
-        "السلامه 123";
+        localStorage.getItem('salama_admin_pass') || '';
 
     let currentCategory = 'all';
 
@@ -2818,22 +2819,36 @@
 
     /* ================= الإدارة ================= */
 
-    function accessAdmin() {
+    async function accessAdmin() {
 
-        const pass =
-            prompt(
-                'ادخل كلمة سر الإدارة:'
+        const pass = prompt('ادخل كلمة سر الإدارة:');
+
+        if (pass === null) return;
+
+        if (!cloudReady) {
+            alert('الموقع غير متصل بقاعدة البيانات. حاول مرة أخرى بعد قليل.');
+            return;
+        }
+
+        try {
+            // التحقق من كلمة السر من Supabase مباشرة، وليس من localStorage.
+            // لذلك نفس كلمة السر تعمل على جميع الهواتف والأجهزة.
+            const result = await supabaseClient.rpc(
+                'verify_admin_password',
+                { entered_password: pass }
             );
 
-        if (pass === adminPassword) {
+            if (result.error) throw result.error;
 
-            showSection('admin');
-
-        } else if (pass !== null) {
-
-            alert(
-                'كلمة السر غير صحيحة!'
-            );
+            if (result.data === true) {
+                adminPassword = pass;
+                showSection('admin');
+            } else {
+                alert('كلمة السر غير صحيحة!');
+            }
+        } catch (error) {
+            console.error('Admin login error:', error);
+            alert('تعذر التحقق من كلمة السر. تأكد من الاتصال بقاعدة البيانات.');
         }
     }
 
