@@ -2088,10 +2088,10 @@
     let cloudReady = false;
     let cloudSyncTimer = null;
 
-    // كلمة سر الإدارة يتم التحقق منها من Supabase.
-    // localStorage هنا مجرد ذاكرة مؤقتة وليست مصدر الصلاحية.
-    let adminPassword =
-        localStorage.getItem('salama_admin_pass') || '';
+    // كلمة سر الإدارة لا تُخزن على الجهاز إطلاقاً.
+    // المصدر الوحيد لكلمة السر هو Supabase، لذلك تغييرها يطبق على كل الأجهزة.
+    let adminPassword = '';
+    let adminAuthenticated = false;
 
     let currentCategory = 'all';
 
@@ -2162,8 +2162,6 @@
         localStorage.setItem('salama_products', JSON.stringify(products));
         localStorage.setItem('salama_orders', JSON.stringify(orders));
         localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
-        localStorage.setItem('salama_admin_pass', adminPassword);
-
         if (!cloudReady) {
             throw new Error('الاتصال بقاعدة البيانات غير جاهز');
         }
@@ -2841,7 +2839,8 @@
             if (result.error) throw result.error;
 
             if (result.data === true) {
-                adminPassword = pass;
+                adminPassword = '';
+                adminAuthenticated = true;
                 showSection('admin');
             } else {
                 alert('كلمة السر غير صحيحة!');
@@ -3322,8 +3321,20 @@
 
             if (result.error) throw result.error;
 
-            adminPassword = newP;
-            localStorage.setItem('salama_admin_pass', newP);
+            // لا نحفظ كلمة السر الجديدة في localStorage أو داخل الملف.
+            // Supabase هو المصدر المركزي الوحيد لكلمة السر.
+            adminPassword = '';
+
+            // نتأكد فوراً أن الكلمة الجديدة أصبحت هي الفعالة على الخادم.
+            const verifyNew = await supabaseClient.rpc(
+                'verify_admin_password',
+                { entered_password: newP }
+            );
+
+            if (verifyNew.error) throw verifyNew.error;
+            if (verifyNew.data !== true) {
+                throw new Error('Password changed but verification failed');
+            }
 
             document.getElementById('old-pass').value = '';
             document.getElementById('new-pass').value = '';
