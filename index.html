@@ -103,6 +103,7 @@
             border-radius: var(--radius);
             transition: all 0.2s ease;
             white-space: nowrap;
+            position: relative;
         }
 
         .btn-nav:hover {
@@ -130,6 +131,31 @@
             padding: 2px 8px;
             border-radius: 20px;
             margin-right: 5px;
+        }
+
+        /* شارة الإشعار للرسائل الجديدة */
+        .chat-notification-badge {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            background-color: var(--primary);
+            color: #ffffff;
+            border: 2px solid var(--dark-gray);
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(211, 16, 24, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(211, 16, 24, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(211, 16, 24, 0); }
         }
 
         .hero-search {
@@ -790,7 +816,6 @@
 
         /* =========================================================
            إعدادات الموبايل
-           تصغير اللوجو والأزرار ومنع حركة الشاشة يمين وشمال
            ========================================================= */
 
         @media (max-width: 768px) {
@@ -1133,10 +1158,6 @@
             }
         }
 
-        /* =========================================================
-           موبايلات صغيرة جداً
-           ========================================================= */
-
         @media (max-width: 400px) {
 
             .header-container {
@@ -1236,8 +1257,9 @@
                 <span id="cart-count" class="cart-badge">0</span>
             </button>
 
-            <button class="btn-nav" onclick="showSection('chat')">
+            <button class="btn-nav" id="chat-nav-btn" onclick="showSection('chat')">
                 التواصل 💬
+                <span id="chat-notification" class="chat-notification-badge hidden">!</span>
             </button>
 
             <button class="btn-nav" onclick="showSection('admin')">
@@ -1520,10 +1542,6 @@
                 إنستا باي (InstaPay)
             </option>
 
-            <option value="visa">
-                فيزا / كارت بنكي
-            </option>
-
         </select>
 
         <div
@@ -1533,13 +1551,6 @@
             📲 يرجى تحويل المبلغ على رقم إنستا باي:
             <strong>01278757570</strong>
             وإرفاق صورة التحويل عبر قسم التواصل.
-        </div>
-
-        <div
-            id="visa-info"
-            class="payment-info"
-        >
-            💳 الدفع بالفيزا متاح مع مندوب التوصيل عبر ماكينة POS عند الاستلام.
         </div>
 
         <button
@@ -2032,6 +2043,9 @@
 
     let currentCategory = 'all';
 
+    let currentSection = 'store';
+    let lastAdminMessagesCount = 0;
+
     let products =
         JSON.parse(
             localStorage.getItem('salama_products')
@@ -2089,6 +2103,49 @@
         localStorage.getItem('salama_user_name');
 
     let selectedAdminUserId = null;
+
+
+    /* ================= الصوت والتنبيهات ================= */
+
+    function playNotificationSound() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        } catch (e) {
+            console.log("Audio play error:", e);
+        }
+    }
+
+    function checkNewCustomerNotifications() {
+        if (!currentUserId) return;
+
+        const myAdminMessages = chatMessages.filter(
+            m => m.userId === currentUserId && m.sender === 'admin'
+        );
+
+        if (myAdminMessages.length > lastAdminMessagesCount) {
+            if (lastAdminMessagesCount !== 0 && currentSection !== 'chat') {
+                const notifBadge = document.getElementById('chat-notification');
+                if (notifBadge) notifBadge.classList.remove('hidden');
+                playNotificationSound();
+            }
+        }
+        lastAdminMessagesCount = myAdminMessages.length;
+    }
 
 
     /* ================= حفظ ومزامنة البيانات ================= */
@@ -2188,6 +2245,8 @@
             if (typeof renderCustomerChat === 'function') renderCustomerChat();
             if (typeof renderAdminSidebar === 'function') renderAdminSidebar();
             if (typeof renderAdminChat === 'function') renderAdminChat();
+
+            checkNewCustomerNotifications();
             return true;
         } catch (error) {
             console.error('Cloud refresh error:', error);
@@ -2432,6 +2491,7 @@
 
 
     function showSection(section) {
+        currentSection = section;
 
         document
             .getElementById('store-section')
@@ -2487,6 +2547,9 @@
                 document
                     .getElementById('chat-section')
                     .classList.remove('hidden');
+
+                const notifBadge = document.getElementById('chat-notification');
+                if (notifBadge) notifBadge.classList.add('hidden');
 
                 checkCustomerChatLogin();
 
@@ -2610,13 +2673,6 @@
             method === 'instapay'
                 ? 'block'
                 : 'none';
-
-        document.getElementById(
-            'visa-info'
-        ).style.display =
-            method === 'visa'
-                ? 'block'
-                : 'none';
     }
 
 
@@ -2717,11 +2773,7 @@
             payment:
                 payment === 'cash'
                     ? 'كاش'
-                    : (
-                        payment === 'instapay'
-                            ? 'إنستا باي'
-                            : 'فيزا'
-                    ),
+                    : 'إنستا باي',
 
             total:
                 total
@@ -3850,6 +3902,13 @@
         await loadCloudData();
         renderProducts();
         startCloudSync();
+
+        if (currentUserId) {
+            const myAdminMessages = chatMessages.filter(
+                m => m.userId === currentUserId && m.sender === 'admin'
+            );
+            lastAdminMessagesCount = myAdminMessages.length;
+        }
     })();
 
 </script>
