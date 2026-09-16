@@ -3316,7 +3316,10 @@
 
             const result = await supabaseClient.rpc(
                 'change_admin_password',
-                { new_password: newP }
+                {
+                    old_password: oldP,
+                    new_password: newP
+                }
             );
 
             if (result.error) throw result.error;
