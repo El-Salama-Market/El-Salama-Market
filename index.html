@@ -2690,7 +2690,7 @@
 
     /* ================= الطلبات ================= */
 
-    function submitOrder() {
+    async function submitOrder() {
 
         const name =
             document.getElementById(
@@ -2795,23 +2795,27 @@
                 total
         });
 
-        saveData();
+        try {
+            await saveData();
 
-        cart = [];
+            cart = [];
 
-        document.getElementById(
-            'cart-count'
-        ).innerText = 0;
+            document.getElementById(
+                'cart-count'
+            ).innerText = 0;
 
-        document.getElementById(
-            'cust-address'
-        ).value = '';
+            document.getElementById(
+                'cust-address'
+            ).value = '';
 
-        alert(
-            'تم إرسال طلبك بنجاح! وسوف يتصل بك المندوب فوراً.'
-        );
+            alert(
+                'تم إرسال طلبك بنجاح! وسوف يتصل بك المندوب فوراً.'
+            );
 
-        showSection('store');
+            showSection('store');
+        } catch (error) {
+            alert('حدث خطأ أثناء إرسال الطلب، تأكد من الاتصال بالإنترنت.');
+        }
     }
 
 
@@ -2821,7 +2825,7 @@
 
         const pass = prompt('ادخل كلمة سر الإدارة:');
 
-        if (pass === null) return;
+        if (pass === null || pass.trim() === '') return;
 
         if (!cloudReady) {
             alert('الموقع غير متصل بقاعدة البيانات. حاول مرة أخرى بعد قليل.');
@@ -2831,14 +2835,14 @@
         try {
             // التحقق من كلمة السر من Supabase مباشرة، وليس من localStorage.
             // لذلك نفس كلمة السر تعمل على جميع الهواتف والأجهزة.
-            const result = await supabaseClient.rpc(
+            const { data, error } = await supabaseClient.rpc(
                 'verify_admin_password',
                 { entered_password: pass }
             );
 
-            if (result.error) throw result.error;
+            if (error) throw error;
 
-            if (result.data === true) {
+            if (data === true) {
                 adminPassword = '';
                 adminAuthenticated = true;
                 showSection('admin');
@@ -2978,7 +2982,7 @@
     }
 
 
-    function contactCustomerFromOrder(
+    async function contactCustomerFromOrder(
         userId,
         userName
     ) {
@@ -3017,7 +3021,7 @@
                     )
             });
 
-            saveData();
+            await saveData();
         }
 
         const chatTabBtn =
@@ -3037,7 +3041,7 @@
     }
 
 
-    function deleteOrder(index) {
+    async function deleteOrder(index) {
 
         if (
             confirm(
@@ -3047,7 +3051,7 @@
 
             orders.splice(index, 1);
 
-            saveData();
+            await saveData();
 
             renderOrders();
         }
@@ -3301,20 +3305,27 @@
             return;
         }
 
+        if (!cloudReady) {
+            alert('الموقع غير متصل بقاعدة البيانات!');
+            return;
+        }
+
         try {
-            const check = await supabaseClient.rpc(
+            // 1. التحقق المباشر من قاعدة البيانات المركزية لضمان أن كلمة السر القديمة صحيحة
+            const { data: isOldCorrect, error: verifyError } = await supabaseClient.rpc(
                 'verify_admin_password',
                 { entered_password: oldP }
             );
 
-            if (check.error) throw check.error;
+            if (verifyError) throw verifyError;
 
-            if (check.data !== true) {
+            if (isOldCorrect !== true) {
                 alert('كلمة السر القديمة غير صحيحة!');
                 return;
             }
 
-            const result = await supabaseClient.rpc(
+            // 2. تحديث كلمة السر في Supabase مباشرة ليتأثر بها كل مستخدم أو موبايل فوراً
+            const { data: changeSuccess, error: changeError } = await supabaseClient.rpc(
                 'change_admin_password',
                 {
                     old_password: oldP,
@@ -3322,28 +3333,32 @@
                 }
             );
 
-            if (result.error) throw result.error;
+            if (changeError) throw changeError;
 
-            // لا نحفظ كلمة السر الجديدة في localStorage أو داخل الملف.
-            // Supabase هو المصدر المركزي الوحيد لكلمة السر.
-            adminPassword = '';
+            if (changeSuccess === true) {
+                // لا نحفظ كلمة السر الجديدة في local/جهاز واحد
+                adminPassword = '';
 
-            // نتأكد فوراً أن الكلمة الجديدة أصبحت هي الفعالة على الخادم.
-            const verifyNew = await supabaseClient.rpc(
-                'verify_admin_password',
-                { entered_password: newP }
-            );
+                // التأكد مجدداً من تطبيقها الخارجي
+                const { data: verifyNew, error: verifyNewError } = await supabaseClient.rpc(
+                    'verify_admin_password',
+                    { entered_password: newP }
+                );
 
-            if (verifyNew.error) throw verifyNew.error;
-            if (verifyNew.data !== true) {
-                throw new Error('Password changed but verification failed');
+                if (verifyNewError) throw verifyNewError;
+
+                if (verifyNew !== true) {
+                    throw new Error('Password changed but verification failed');
+                }
+
+                document.getElementById('old-pass').value = '';
+                document.getElementById('new-pass').value = '';
+                document.getElementById('confirm-pass').value = '';
+
+                alert('تم تغيير كلمة السر بنجاح على قاعدة البيانات وبشكل كلي لجميع الأجهزة!');
+            } else {
+                alert('فشل تغيير كلمة السر.');
             }
-
-            document.getElementById('old-pass').value = '';
-            document.getElementById('new-pass').value = '';
-            document.getElementById('confirm-pass').value = '';
-
-            alert('تم تغيير كلمة السر بنجاح!');
         } catch (error) {
             console.error('Password change error:', error);
             alert('تعذر تغيير كلمة السر. تأكد من الاتصال بقاعدة البيانات.');
@@ -3455,7 +3470,7 @@
 
     /* ================= إرسال رسالة ================= */
 
-    function sendChatMessage(sender) {
+    async function sendChatMessage(sender) {
 
         const isCustomer =
             sender === 'customer';
@@ -3533,7 +3548,7 @@
                 )
         });
 
-        saveData();
+        await saveData();
 
         textInput.value = '';
 
@@ -3602,7 +3617,7 @@
             new FileReader();
 
         reader.onload =
-            function(e) {
+            async function(e) {
 
                 chatMessages.push({
 
@@ -3631,7 +3646,7 @@
                         )
                 });
 
-                saveData();
+                await saveData();
 
                 if (isCustomer) {
 
