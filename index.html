@@ -571,6 +571,39 @@
             background: #e9edef;
         }
 
+        .chat-msg {
+            position: relative;
+            user-select: none;
+        }
+
+        .message-context-menu {
+            position: fixed;
+            z-index: 99999;
+            display: none;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,.18);
+            overflow: hidden;
+            min-width: 140px;
+        }
+
+        .message-context-menu button {
+            display: block;
+            width: 100%;
+            border: 0;
+            background: #fff;
+            padding: 11px 14px;
+            text-align: right;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .message-context-menu button:hover {
+            background: #f1f3f5;
+        }
+
         .wa-avatar {
             width: 45px;
             height: 45px;
@@ -1243,7 +1276,39 @@
                 height: 28px;
             }
         }
-    </style>
+    
+
+        /* قائمة الضغط المطول على اسم العميل */
+        .chat-context-menu {
+            position: fixed;
+            display: none;
+            z-index: 99999;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 25px rgba(0,0,0,.20);
+            padding: 6px;
+            min-width: 150px;
+            direction: rtl;
+        }
+
+        .chat-context-menu button {
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: #d32f2f;
+            padding: 10px 12px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .chat-context-menu button:hover {
+            background: #ffebee;
+        }
+
+</style>
 </head>
 
 <body>
@@ -1988,8 +2053,16 @@
                     <div
                         class="wa-chat-header"
                         id="admin-chat-header-title"
+                        style="display:flex; align-items:center; justify-content:space-between; gap:10px;"
                     >
-                        اختر عميل من القائمة لبدء المحادثة
+                        <span>اختر عميل من القائمة لبدء المحادثة</span>
+                        <button
+                            id="delete-admin-chat-btn"
+                            onclick="deleteSelectedChat()"
+                            style="display:none;"
+                        >
+                            🗑️ حذف الشات
+                        </button>
                     </div>
 
                     <div
@@ -2099,6 +2172,10 @@
 
     let cloudReady = false;
     let cloudSyncTimer = null;
+    let chatSaveInProgress = false;
+    let chatSaveQueued = false;
+    const pendingChatMessageIds = new Set();
+    let chatSavePromise = null;
 
     let currentCategory = 'all';
 
@@ -2221,13 +2298,40 @@
             throw new Error('الاتصال بقاعدة البيانات غير جاهز');
         }
 
+        // عند حفظ الشات، ندمج آخر نسخة من السيرفر مع الرسائل الموجودة على هذا الجهاز
+        // حتى لا تختفي رسالة بسبب مزامنة أو رسالة أُرسلت من جهاز آخر في نفس اللحظة.
+        const isChatOnlyChange = pendingChatMessageIds.size > 0;
+        if (isChatOnlyChange) {
+            const { data: latest, error: readError } = await supabaseClient
+                .from('site_data')
+                .select('products, orders, chats')
+                .eq('id', 1)
+                .maybeSingle();
+
+            if (readError) throw readError;
+
+            if (latest && Array.isArray(latest.chats)) {
+                const localById = new Map(chatMessages.map(m => [m.id, m]));
+                const merged = [...latest.chats];
+                const cloudIds = new Set(latest.chats.map(m => m.id));
+
+                for (const localMsg of chatMessages) {
+                    if (pendingChatMessageIds.has(localMsg.id) && !cloudIds.has(localMsg.id)) {
+                        merged.push(localMsg);
+                    }
+                }
+                chatMessages = merged;
+            }
+        }
+
+        const payloadChats = chatMessages.slice();
         const { error } = await supabaseClient
             .from('site_data')
             .upsert({
                 id: 1,
                 products: products,
                 orders: orders,
-                chats: chatMessages,
+                chats: payloadChats,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'id' });
 
@@ -2236,6 +2340,10 @@
             throw error;
         }
 
+        pendingChatMessageIds.forEach(id => {
+            if (payloadChats.some(m => m.id === id)) pendingChatMessageIds.delete(id);
+        });
+        localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
         return true;
     }
 
@@ -2299,7 +2407,14 @@
 
             if (Array.isArray(data.products)) products = data.products;
             if (Array.isArray(data.orders)) orders = data.orders;
-            if (Array.isArray(data.chats)) chatMessages = data.chats;
+            if (Array.isArray(data.chats)) {
+                // لا تستبدل الرسائل المحلية التي لم تنتهِ من الحفظ بعد.
+                const cloudIds = new Set(data.chats.map(m => m.id));
+                const localPending = chatMessages.filter(m => pendingChatMessageIds.has(m.id) && !cloudIds.has(m.id));
+                chatMessages = data.chats.concat(localPending);
+
+                data.chats.forEach(m => pendingChatMessageIds.delete(m.id));
+            }
 
             const previousAdminPasswordHash = adminPasswordHash;
             loadAdminPasswordFromChats();
@@ -2337,7 +2452,7 @@
 
         cloudSyncTimer = setInterval(() => {
             refreshCloudData();
-        }, 2000);
+        }, 500);
     }
 
     /* ================= المنتجات ================= */
@@ -2556,7 +2671,7 @@
                 ).innerText =
                     cart.length;
 
-            }, 800);
+            }, 500);
 
         } else {
 
@@ -3567,99 +3682,76 @@
     /* ================= إرسال رسالة ================= */
 
     async function sendChatMessage(sender) {
+        const isCustomer = sender === 'customer';
+        const inputId = isCustomer ? 'chat-input-text' : 'admin-chat-input-text';
+        const textInput = document.getElementById(inputId);
+        if (!textInput) return;
 
-        const isCustomer =
-            sender === 'customer';
-
-        const inputId =
-            isCustomer
-                ? 'chat-input-text'
-                : 'admin-chat-input-text';
-
-        const textInput =
-            document.getElementById(
-                inputId
-            );
-
-        const text =
-            textInput.value.trim();
-
+        const text = textInput.value.trim();
         if (!text) return;
 
-        let targetUserId =
-            currentUserId;
-
-        let targetUserName =
-            currentUserName;
+        let targetUserId = currentUserId;
+        let targetUserName = currentUserName;
 
         if (!isCustomer) {
-
             if (!selectedAdminUserId) {
-
-                alert(
-                    'الرجاء اختيار عميل من القائمة الجانبية أولاً!'
-                );
-
+                alert('الرجاء اختيار عميل من القائمة الجانبية أولاً!');
                 return;
             }
-
-            targetUserId =
-                selectedAdminUserId;
-
-            const userObj =
-                getUserObjById(
-                    selectedAdminUserId
-                );
-
-            targetUserName =
-                userObj
-                    ? userObj.name
-                    : 'عميل';
+            targetUserId = selectedAdminUserId;
+            const userObj = getUserObjById(selectedAdminUserId);
+            targetUserName = userObj ? userObj.name : 'عميل';
         }
 
-        chatMessages.push({
+        const message = {
+            id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
+            userId: targetUserId,
+            userName: targetUserName,
+            sender: sender,
+            type: 'text',
+            content: text,
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        };
 
-            userId:
-                targetUserId,
-
-            userName:
-                targetUserName,
-
-            sender:
-                sender,
-
-            type:
-                'text',
-
-            content:
-                text,
-
-            time:
-                new Date().toLocaleTimeString(
-                    'ar-EG',
-                    {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    }
-                )
-        });
-
-        await saveData();
-
+        chatMessages = chatMessages.filter(
+            m => !(m.userId === targetUserId && m.type === 'deleted_user')
+        );
+        chatMessages.push(message);
+        pendingChatMessageIds.add(message.id);
         textInput.value = '';
 
-        if (isCustomer) {
+        // الرسالة تظل ظاهرة على جهاز المرسل ولا تنتظر قاعدة البيانات.
+        if (isCustomer) renderCustomerChat();
+        else { renderAdminSidebar(); renderAdminChat(); }
 
-            renderCustomerChat();
+        // نحفظ في الخلفية، لكن نضمن عدم وجود حفظين متداخلين.
+        if (!chatSavePromise) {
+            chatSavePromise = (async () => {
+                chatSaveInProgress = true;
+                try {
+                    await saveData();
+                } finally {
+                    chatSaveInProgress = false;
+                    chatSavePromise = null;
+                }
+            })();
+        }
 
-        } else {
-
-            renderAdminSidebar();
-
-            renderAdminChat();
+        try {
+            await chatSavePromise;
+            if (pendingChatMessageIds.size > 0 && !chatSavePromise) {
+                chatSavePromise = (async () => {
+                    chatSaveInProgress = true;
+                    try { await saveData(); }
+                    finally { chatSaveInProgress = false; chatSavePromise = null; }
+                })();
+                await chatSavePromise;
+            }
+        } catch (error) {
+            console.error('Cloud message save error:', error);
+            alert('تعذر حفظ الرسالة حالياً. الرسالة ستظل ظاهرة، وحاول مرة أخرى إذا لم تصل للطرف الآخر.');
         }
     }
-
 
     /* ================= إرسال صورة ================= */
 
@@ -3715,8 +3807,9 @@
         reader.onload =
             async function(e) {
 
-                chatMessages.push({
+                const imageMessage = {
 
+                    id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
                     userId:
                         targetUserId,
 
@@ -3740,20 +3833,27 @@
                                 minute: '2-digit'
                             }
                         )
-                });
-
-                await saveData();
+                };
+                chatMessages.push(imageMessage);
+                pendingChatMessageIds.add(imageMessage.id);
 
                 if (isCustomer) {
-
                     renderCustomerChat();
-
                 } else {
-
                     renderAdminSidebar();
-
                     renderAdminChat();
                 }
+
+                if (!chatSavePromise) {
+                    chatSavePromise = (async () => {
+                        chatSaveInProgress = true;
+                        try { await saveData(); }
+                        finally { chatSaveInProgress = false; chatSavePromise = null; }
+                    })();
+                }
+                chatSavePromise.catch(function(error) {
+                    console.error('Cloud image save error:', error);
+                });
             };
 
         reader.readAsDataURL(file);
@@ -3788,9 +3888,15 @@
 
     function getUserObjById(uid) {
 
+        const isDeleted = chatMessages.some(
+            m => m.userId === uid && m.type === 'deleted_user'
+        );
+
+        if (isDeleted) return null;
+
         const msg =
             chatMessages.find(
-                m => m.userId === uid
+                m => m.userId === uid && m.type !== 'deleted_user'
             );
 
         if (msg) {
@@ -3840,10 +3946,16 @@
         sidebar.innerHTML = '';
 
         const usersMap = {};
+        const deletedChatUsers = new Set(
+            chatMessages
+                .filter(msg => msg.type === 'deleted_user' && msg.userId)
+                .map(msg => msg.userId)
+        );
 
         chatMessages.forEach(msg => {
 
-            if (msg.type === 'admin_password') return;
+            if (msg.type === 'admin_password' || msg.type === 'deleted_user') return;
+            if (msg.userId && deletedChatUsers.has(msg.userId)) return;
 
             if (msg.userId) {
 
@@ -3870,6 +3982,7 @@
 
             if (
                 ord.userId &&
+                !deletedChatUsers.has(ord.userId) &&
                 !usersMap[ord.userId]
             ) {
 
@@ -3940,6 +4053,9 @@
 
                 <div
                     class="wa-chat-item ${activeClass}"
+                    data-user-id="${u.id}"
+                    data-user-name="${String(u.name).replace(/"/g, '&quot;')}"
+                    oncontextmenu="showChatContextMenu(event, this); return false;"
                     onclick="
                         selectAdminUser(
                             '${u.id}',
@@ -3979,6 +4095,83 @@
     }
 
 
+    /* ================= الضغط المطول على اسم العميل ================= */
+
+    let chatLongPressTimer = null;
+    let chatLongPressTriggered = false;
+    let contextMenuUserId = null;
+
+    function showChatContextMenu(event, element) {
+        const uid = element.getAttribute('data-user-id');
+        const uname = element.getAttribute('data-user-name') || 'العميل';
+
+        contextMenuUserId = uid;
+        selectAdminUser(uid, uname);
+
+        const menu = document.getElementById('chat-context-menu');
+        if (!menu) return;
+
+        const x = Math.min(event.clientX, window.innerWidth - 165);
+        const y = Math.min(event.clientY, window.innerHeight - 65);
+
+        menu.style.left = Math.max(8, x) + 'px';
+        menu.style.top = Math.max(8, y) + 'px';
+        menu.style.display = 'block';
+    }
+
+    function hideChatContextMenu() {
+        const menu = document.getElementById('chat-context-menu');
+        if (menu) menu.style.display = 'none';
+    }
+
+    async function deleteChatFromContextMenu() {
+        hideChatContextMenu();
+        if (!contextMenuUserId) return;
+        selectedAdminUserId = contextMenuUserId;
+        await deleteSelectedChat();
+        contextMenuUserId = null;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const sidebar = document.getElementById('admin-wa-users-list');
+        if (!sidebar) return;
+
+        sidebar.addEventListener('touchstart', function (e) {
+            const item = e.target.closest('.wa-chat-item');
+            if (!item) return;
+
+            chatLongPressTriggered = false;
+            clearTimeout(chatLongPressTimer);
+
+            chatLongPressTimer = setTimeout(function () {
+                chatLongPressTriggered = true;
+                const uid = item.getAttribute('data-user-id');
+                const uname = item.getAttribute('data-user-name') || 'العميل';
+                contextMenuUserId = uid;
+                selectAdminUser(uid, uname);
+
+                const touch = e.touches[0];
+                const menu = document.getElementById('chat-context-menu');
+                if (menu && touch) {
+                    menu.style.left = Math.max(8, Math.min(touch.clientX, window.innerWidth - 165)) + 'px';
+                    menu.style.top = Math.max(8, Math.min(touch.clientY, window.innerHeight - 65)) + 'px';
+                    menu.style.display = 'block';
+                }
+            }, 600);
+        }, {passive:true});
+
+        ['touchend', 'touchmove', 'touchcancel'].forEach(function (eventName) {
+            sidebar.addEventListener(eventName, function () {
+                clearTimeout(chatLongPressTimer);
+            }, {passive:true});
+        });
+
+        document.addEventListener('click', function (e) {
+            const menu = document.getElementById('chat-context-menu');
+            if (menu && !menu.contains(e.target)) hideChatContextMenu();
+        });
+    });
+
     /* ================= اختيار عميل ================= */
 
     function selectAdminUser(
@@ -3989,13 +4182,88 @@
         selectedAdminUserId =
             uid;
 
-        document.getElementById(
-            'admin-chat-header-title'
-        ).innerText =
+        const header =
+            document.getElementById(
+                'admin-chat-header-title'
+            );
+
+        header.querySelector('span').innerText =
             '👤 محادثة مع: ' + uname;
+
+        const deleteBtn =
+            document.getElementById(
+                'delete-admin-chat-btn'
+            );
+
+        if (deleteBtn) {
+            deleteBtn.style.display = 'inline-block';
+        }
 
         renderAdminSidebar();
 
+        renderAdminChat();
+    }
+
+
+    /* ================= حذف محادثة عميل ================= */
+
+    async function deleteSelectedChat() {
+
+        if (!selectedAdminUserId) {
+            alert('الرجاء اختيار عميل أولاً!');
+            return;
+        }
+
+        const userObj =
+            getUserObjById(selectedAdminUserId);
+
+        const userName =
+            userObj
+                ? userObj.name
+                : 'العميل';
+
+        if (!confirm('هل أنت متأكد من حذف الشات بالكامل مع ' + userName + '؟\nسيتم حذف جميع الرسائل والصور في هذه المحادثة.')) {
+            return;
+        }
+
+        const deletedUserId = selectedAdminUserId;
+
+        chatMessages = chatMessages.filter(
+            m => m.userId !== deletedUserId || m.type === 'admin_password'
+        );
+
+        // يحتفظ فقط بعلامة مخفية بالـ ID لمنع ظهور اسم العميل مرة أخرى في قائمة الشات.
+        // لا يتم حفظ اسم العميل داخل هذه العلامة.
+        chatMessages.push({
+            id: 'deleted_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+            userId: deletedUserId,
+            type: 'deleted_user',
+            sender: 'system',
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        });
+
+        await saveData();
+
+        selectedAdminUserId = null;
+
+        const header =
+            document.getElementById(
+                'admin-chat-header-title'
+            );
+
+        header.querySelector('span').innerText =
+            'اختر عميل من القائمة لبدء المحادثة';
+
+        const deleteBtn =
+            document.getElementById(
+                'delete-admin-chat-btn'
+            );
+
+        if (deleteBtn) {
+            deleteBtn.style.display = 'none';
+        }
+
+        renderAdminSidebar();
         renderAdminChat();
     }
 
@@ -4078,6 +4346,15 @@
 
             messagesArr.forEach(msg => {
 
+                // الرسائل التي تم حذفها من هذا الطرف فقط لا تظهر له،
+                // بينما تظل ظاهرة للطرف الآخر.
+                if (viewerType === 'admin' && msg.deletedForAdmin) return;
+                if (viewerType === 'customer' && msg.deletedForCustomer) return;
+
+                if (!msg.id) {
+                    msg.id = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+                }
+
                 const isMyMessage =
                     msg.sender === viewerType;
 
@@ -4103,12 +4380,14 @@
 
                     <div
                         class="chat-msg ${cssClass}"
+                        data-message-id="${msg.id}"
+                        oncontextmenu="${viewerType === 'admin' && msg.sender === 'admin' ? 'showMessageContextMenu(event, this); return false;' : ''}"
                     >
 
                         ${contentBody}
 
                         <span class="msg-meta">
-                            ${msg.time}
+                            ${msg.time}${msg.edited ? ' · تم التعديل' : ''}
                         </span>
 
                     </div>
@@ -4128,6 +4407,162 @@
     }
 
 
+    /* ================= تعديل / حذف رسائل الإدارة ================= */
+
+    let messageLongPressTimer = null;
+    let contextMessageId = null;
+
+    function showMessageContextMenu(event, element) {
+        const id = element.getAttribute('data-message-id');
+        if (!id) return;
+
+        const msg = chatMessages.find(m => m.id === id);
+        if (!msg || msg.sender !== 'admin' || msg.type === 'admin_password') return;
+
+        contextMessageId = id;
+        const menu = document.getElementById('message-context-menu');
+        if (!menu) return;
+
+        const x = event.clientX || 20;
+        const y = event.clientY || 20;
+        menu.style.left = Math.max(8, Math.min(x, window.innerWidth - 155)) + 'px';
+        menu.style.top = Math.max(8, Math.min(y, window.innerHeight - 95)) + 'px';
+        menu.style.display = 'block';
+    }
+
+    function hideMessageContextMenu() {
+        const menu = document.getElementById('message-context-menu');
+        if (menu) menu.style.display = 'none';
+    }
+
+    async function deleteAdminMessageFromMenu() {
+        hideMessageContextMenu();
+        if (!contextMessageId) return;
+
+        const index = chatMessages.findIndex(m => m.id === contextMessageId);
+        if (index === -1) return;
+        const msg = chatMessages[index];
+
+        if (msg.sender !== 'admin') return;
+
+        const choice = prompt(
+            'اكتب رقم الاختيار:\n\n1 - حذف لي فقط\n2 - حذف لي وللعميل\n\nاضغط إلغاء لإلغاء العملية.'
+        );
+
+        if (choice === null) {
+            contextMessageId = null;
+            return;
+        }
+
+        if (choice.trim() === '1') {
+            msg.deletedForAdmin = true;
+            await saveData();
+        } else if (choice.trim() === '2') {
+            chatMessages.splice(index, 1);
+            await saveData();
+        } else {
+            alert('من فضلك اختر 1 أو 2.');
+            return;
+        }
+
+        contextMessageId = null;
+        renderAdminSidebar();
+        renderAdminChat();
+    }
+
+    async function editAdminMessageFromMenu() {
+        hideMessageContextMenu();
+        if (!contextMessageId) return;
+
+        const msg = chatMessages.find(m => m.id === contextMessageId);
+        if (!msg || msg.sender !== 'admin') return;
+
+        if (msg.type !== 'text') {
+            alert('يمكن تعديل الرسائل النصية فقط. أما الصور فيمكن حذفها.');
+            return;
+        }
+
+        const newText = prompt('عدّل الرسالة:', msg.content);
+        if (newText === null) return;
+
+        const trimmed = newText.trim();
+        if (!trimmed) {
+            alert('لا يمكن ترك الرسالة فارغة.');
+            return;
+        }
+
+        msg.content = trimmed;
+        msg.edited = true;
+        await saveData();
+        contextMessageId = null;
+        renderAdminSidebar();
+        renderAdminChat();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const messagesBox = document.getElementById('admin-chat-messages-list');
+        if (!messagesBox) return;
+
+        messagesBox.addEventListener('touchstart', function (e) {
+            const item = e.target.closest('.chat-msg');
+            if (!item) return;
+
+            const id = item.getAttribute('data-message-id');
+            const msg = chatMessages.find(m => m.id === id);
+            if (!msg || msg.sender !== 'admin') return;
+
+            clearTimeout(messageLongPressTimer);
+            messageLongPressTimer = setTimeout(function () {
+                contextMessageId = id;
+                const menu = document.getElementById('message-context-menu');
+                const touch = e.touches[0];
+                if (menu && touch) {
+                    menu.style.left = Math.max(8, Math.min(touch.clientX, window.innerWidth - 155)) + 'px';
+                    menu.style.top = Math.max(8, Math.min(touch.clientY, window.innerHeight - 95)) + 'px';
+                    menu.style.display = 'block';
+                }
+            }, 600);
+        }, {passive:true});
+
+        ['touchend', 'touchmove', 'touchcancel'].forEach(function (eventName) {
+            messagesBox.addEventListener(eventName, function () {
+                clearTimeout(messageLongPressTimer);
+            }, {passive:true});
+        });
+
+        document.addEventListener('click', function (e) {
+            const menu = document.getElementById('message-context-menu');
+            if (menu && !menu.contains(e.target)) hideMessageContextMenu();
+        });
+    });
+
+
+    /* ================= إرسال بالضغط على Enter ================= */
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const customerInput = document.getElementById('chat-input-text');
+        const adminInput = document.getElementById('admin-chat-input-text');
+
+        if (customerInput) {
+            customerInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendChatMessage('customer');
+                }
+            });
+        }
+
+        if (adminInput) {
+            adminInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendChatMessage('admin');
+                }
+            });
+        }
+    });
+
+
     /* ================= تشغيل الموقع ================= */
 
     (async function initializeCloud() {
@@ -4144,6 +4579,17 @@
     })();
 
 </script>
+
+
+
+    <div id="chat-context-menu" class="chat-context-menu">
+        <button type="button" onclick="deleteChatFromContextMenu()">🗑️ حذف الشات</button>
+    </div>
+
+    <div id="message-context-menu" class="message-context-menu">
+        <button type="button" onclick="editAdminMessageFromMenu()">✏️ تعديل الرسالة</button>
+        <button type="button" onclick="deleteAdminMessageFromMenu()">🗑️ حذف الرسالة</button>
+    </div>
 
 </body>
 </html>
