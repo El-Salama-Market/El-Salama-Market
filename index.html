@@ -1566,6 +1566,39 @@
     .file-label-btn:active {
         transform: scale(.92) !important;
     }
+
+    /* ===== إصلاح تمرير شات العميل والإدارة ===== */
+    .wa-chat-area {
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .wa-chat-messages {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
+        overscroll-behavior-y: contain !important;
+        scrollbar-width: thin;
+    }
+
+    .chat-input-bar {
+        flex: 0 0 auto !important;
+        z-index: 20 !important;
+    }
+
+    /* لا يختفي صندوق الكتابة أثناء إرسال صورة */
+    #chat-interface .chat-input-bar,
+    #admin-tab-chat .chat-input-bar {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
 </style>
 </head>
 
@@ -1607,7 +1640,7 @@
 
             <button class="btn-nav" onclick="showSection('admin')">
                 الإدارة ⚙️
-                <span id="admin-global-badge" class="chat-notification-badge hidden" style="top:-2px; left:-2px;">0</span>
+                
             </button>
 
         </div>
@@ -2605,18 +2638,27 @@
     }
 
     function getUnreadMessages(messages, storageKey) {
+        if (!Array.isArray(messages) || !messages.length) return [];
+
         const lastSeenId = localStorage.getItem(storageKey);
 
-        // أول مرة على هذا الجهاز: لا نعتبر الرسائل القديمة رسائل جديدة.
-        if (!lastSeenId) return [];
-
-        const index = messages.findIndex(m => m.id === lastSeenId);
-        if (index === -1) {
-            // لو الرسالة المحفوظة اتغيرت/اتحذفت، لا نعمل إنذار كاذب.
-            return [];
+        // الطريقة الأساسية: آخر رسالة مقروءة.
+        if (lastSeenId) {
+            const index = messages.findIndex(m => m && m.id === lastSeenId);
+            if (index >= 0) {
+                return messages.slice(index + 1);
+            }
         }
 
-        return messages.slice(index + 1);
+        // حماية من مشكلة حذف/تغيير الرسالة المقروءة:
+        // نعتمد على وقت آخر قراءة بدل اختفاء التنبيه نهائياً.
+        const seenTime = Number(localStorage.getItem(storageKey + '_ts') || 0);
+        if (seenTime > 0) {
+            return messages.filter(m => Number(m.timestamp || m.createdAt || 0) > seenTime);
+        }
+
+        // لا توجد حالة قراءة محفوظة = لا نعتبر الرسائل القديمة جديدة.
+        return [];
     }
 
     function markCustomerChatAsSeen() {
@@ -2626,6 +2668,7 @@
         const key = 'salama_customer_chat_seen_' + currentUserId;
         if (messages.length) {
             localStorage.setItem(key, messages[messages.length - 1].id);
+            localStorage.setItem(key + '_ts', String(Number(messages[messages.length - 1].timestamp || Date.now())));
         }
 
         const badge = document.getElementById('chat-notification');
@@ -2645,9 +2688,10 @@
 
         if (!localStorage.getItem(key) && messages.length) {
             localStorage.setItem(key, messages[messages.length - 1].id);
+            localStorage.setItem(key + '_ts', String(Number(messages[messages.length - 1].timestamp || Date.now())));
         }
 
-        lastAdminMessagesCount = messages.length;
+        lastAdminMessagesCount = 0;
         updateCustomerNotificationBadge(false);
     }
 
@@ -2661,13 +2705,16 @@
 
         if (!badge) return;
 
-        if (unread.length > 0) {
+        if (unread.length > 0 && currentSection !== 'chat') {
             badge.innerText = unread.length > 99 ? '99+' : String(unread.length);
             badge.classList.remove('hidden');
 
             if (playSound && unread.length > lastAdminMessagesCount) {
                 playNotificationSound();
             }
+        } else if (currentSection === 'chat') {
+            badge.innerText = '';
+            badge.classList.add('hidden');
         } else {
             badge.innerText = '';
             badge.classList.add('hidden');
@@ -2692,6 +2739,18 @@
         localStorage.setItem('salama_admin_chat_seen', JSON.stringify(map));
     }
 
+    function getAdminSeenTimeMap() {
+        try {
+            return JSON.parse(localStorage.getItem('salama_admin_chat_seen_ts') || '{}') || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveAdminSeenTimeMap(map) {
+        localStorage.setItem('salama_admin_chat_seen_ts', JSON.stringify(map));
+    }
+
     function markAdminChatAsSeen(userId) {
         if (!userId) return;
 
@@ -2699,15 +2758,22 @@
         if (!messages.length) return;
 
         const map = getAdminSeenMap();
-        map[userId] = messages[messages.length - 1].id;
+        const lastMessage = messages[messages.length - 1];
+        map[userId] = lastMessage.id;
         saveAdminSeenMap(map);
+
+        const timeMap = getAdminSeenTimeMap();
+        timeMap[userId] = Number(lastMessage.timestamp || Date.now());
+        saveAdminSeenTimeMap(timeMap);
 
         checkAdminNotifications();
     }
 
     function initializeAdminChatNotifications() {
         const map = getAdminSeenMap();
+        const timeMap = getAdminSeenTimeMap();
         let changed = false;
+        let timeChanged = false;
 
         const userIds = [...new Set(
             chatMessages
@@ -2736,12 +2802,16 @@
         const tabBadge = document.getElementById('admin-chat-tab-badge');
 
         if (!adminAuthenticated) {
-            if (tabBadge) tabBadge.classList.add('hidden');
+            if (tabBadge) {
+                tabBadge.innerText = '';
+                tabBadge.classList.add('hidden');
+            }
             lastUnreadAdminCount = 0;
             return;
         }
 
         const map = getAdminSeenMap();
+        const timeMap = getAdminSeenTimeMap();
         let totalUnreadForAdmin = 0;
 
         const adminNotificationCutoffs = getAdminLocalChatCutoffs();
@@ -2758,28 +2828,31 @@
         )];
 
         userIds.forEach(userId => {
-            // أثناء فتح محادثة هذا العميل، رسائله تعتبر مقروءة.
-            if (currentSection === 'admin' && selectedAdminUserId === userId) {
-                return;
-            }
+            if (currentSection === 'admin' && selectedAdminUserId === userId) return;
 
             const messages = getAdminIncomingMessages(userId);
-            const unread = getUnreadMessages(messages, 'salama_admin_seen_' + userId);
+            if (!messages.length) return;
 
-            // نستخدم الخريطة أيضاً، مع دعم البيانات القديمة.
             const seenId = map[userId];
+            const seenTime = Number(timeMap[userId] || 0);
             let count = 0;
 
             if (seenId) {
-                const index = messages.findIndex(m => m.id === seenId);
-                count = index >= 0 ? messages.length - index - 1 : 0;
+                const index = messages.findIndex(m => m && m.id === seenId);
+                if (index >= 0) {
+                    count = messages.length - index - 1;
+                } else if (seenTime > 0) {
+                    count = messages.filter(m =>
+                        Number(m.timestamp || m.createdAt || 0) > seenTime
+                    ).length;
+                }
+            } else if (seenTime > 0) {
+                count = messages.filter(m =>
+                    Number(m.timestamp || m.createdAt || 0) > seenTime
+                ).length;
             }
 
-            if (!count && !seenId) {
-                count = 0;
-            }
-
-            totalUnreadForAdmin += count;
+            totalUnreadForAdmin += Math.max(0, count);
         });
 
         if (tabBadge) {
@@ -2792,10 +2865,7 @@
             }
         }
 
-        if (
-            adminAuthenticated &&
-            totalUnreadForAdmin > lastUnreadAdminCount
-        ) {
+        if (totalUnreadForAdmin > lastUnreadAdminCount) {
             playNotificationSound();
         }
 
@@ -3011,7 +3081,16 @@
 
         cloudSyncTimer = setInterval(() => {
             refreshCloudData();
-        }, 8000);
+        }, 5000);
+
+        // فحص خفيف للتنبيهات حتى تظهر العلامة والصوت بسلاسة دون انتظار دورة المزامنة كاملة.
+        if (window.chatNotificationTimer) clearInterval(window.chatNotificationTimer);
+        window.chatNotificationTimer = setInterval(() => {
+            try {
+                checkNewCustomerNotifications();
+                checkAdminNotifications();
+            } catch (e) {}
+        }, 1500);
     }
 
     /* ================= المنتجات ================= */
@@ -4288,6 +4367,11 @@
         pendingChatMessageIds.add(message.id);
         textInput.value = '';
 
+        // الحفاظ على صندوق الكتابة مفتوحاً دائماً بعد الإرسال.
+        textInput.disabled = false;
+        textInput.style.display = '';
+        textInput.style.visibility = 'visible';
+
         // الرسالة تظهر فوراً مثل واتساب بدون انتظار الشبكة.
         if (isCustomer) {
             renderCustomerChat();
@@ -4474,8 +4558,19 @@
             const nextTextInput = document.getElementById(
                 isCustomer ? 'chat-input-text' : 'admin-chat-input-text'
             );
+            const inputBar = document.querySelector(
+                isCustomer ? '#chat-interface .chat-input-bar' : '#admin-tab-chat .chat-input-bar'
+            );
+            if (inputBar) {
+                inputBar.style.display = 'flex';
+                inputBar.style.visibility = 'visible';
+                inputBar.style.opacity = '1';
+            }
+
             if (nextTextInput) {
                 nextTextInput.disabled = false;
+                nextTextInput.style.display = '';
+                nextTextInput.style.visibility = 'visible';
                 nextTextInput.focus();
             }
 
