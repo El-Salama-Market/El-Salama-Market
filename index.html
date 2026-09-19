@@ -1540,7 +1540,33 @@
             }
         }
 
-    </style>
+    
+    /* تحسين زر إرسال الصور في الشات */
+    .file-label-btn {
+        min-width: 52px !important;
+        width: 52px !important;
+        height: 42px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0 !important;
+        font-size: 0 !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+        flex: 0 0 52px !important;
+        box-shadow: 0 3px 10px rgba(0,0,0,.12) !important;
+        transition: transform .18s ease, box-shadow .18s ease !important;
+    }
+    .file-label-btn::before {
+        content: '📷';
+        font-size: 19px !important;
+    }
+    .file-label-btn:active {
+        transform: scale(.92) !important;
+    }
+</style>
 </head>
 
 <body>
@@ -2554,7 +2580,7 @@
 
     function getCustomerIncomingMessages() {
         if (!currentUserId) return [];
-        const cutoffs = getDeletedChatCutoffs();
+        const cutoffs = {};
         return chatMessages.filter(
             m => m &&
                  m.userId === currentUserId &&
@@ -2567,7 +2593,7 @@
 
     function getAdminIncomingMessages(userId) {
         if (!userId) return [];
-        const cutoffs = getDeletedChatCutoffs();
+        const cutoffs = {};
         return chatMessages.filter(
             m => m &&
                  m.userId === userId &&
@@ -2718,7 +2744,7 @@
         const map = getAdminSeenMap();
         let totalUnreadForAdmin = 0;
 
-        const adminNotificationCutoffs = getDeletedChatCutoffs();
+        const adminNotificationCutoffs = getAdminLocalChatCutoffs();
         const userIds = [...new Set(
             chatMessages
                 .filter(m =>
@@ -4475,7 +4501,7 @@
                 'chat-messages-list'
             );
 
-        const renderCutoffs = getDeletedChatCutoffs();
+        const renderCutoffs = {};
         const myMessages =
             chatMessages.filter(
                 m =>
@@ -4509,7 +4535,23 @@
         return cutoffs;
     }
 
-    function isMessageHiddenByChatDeletion(msg, cutoffs) {
+    // حذف الشات من الإدارة فقط: لا نعدّل الرسائل السحابية.
+    function getAdminLocalChatCutoffs() {
+        try {
+            return JSON.parse(localStorage.getItem('salama_admin_deleted_chats') || '{}') || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function setAdminLocalChatCutoff(userId, timestamp) {
+        if (!userId) return;
+        const cutoffs = getAdminLocalChatCutoffs();
+        cutoffs[userId] = Number(timestamp || Date.now());
+        localStorage.setItem('salama_admin_deleted_chats', JSON.stringify(cutoffs));
+    }
+
+function isMessageHiddenByChatDeletion(msg, cutoffs) {
         if (!msg || !msg.userId) return false;
         if (msg.type === 'deleted_user') return true;
 
@@ -4522,7 +4564,7 @@
 
     function hasActiveChatAfterDeletion(userId) {
         if (!userId) return false;
-        const cutoffs = getDeletedChatCutoffs();
+        const cutoffs = getAdminLocalChatCutoffs();
         const cutoff = cutoffs[userId] || 0;
         return chatMessages.some(function (m) {
             if (!m || m.userId !== userId || m.type === 'deleted_user') return false;
@@ -4534,7 +4576,7 @@
 
     function getUserObjById(uid) {
 
-        const cutoffs = getDeletedChatCutoffs();
+        const cutoffs = getAdminLocalChatCutoffs();
         const cutoff = cutoffs[uid] || 0;
 
         const msg =
@@ -4593,7 +4635,7 @@
         sidebar.innerHTML = '';
 
         const usersMap = {};
-        const deletedChatCutoffs = getDeletedChatCutoffs();
+        const deletedChatCutoffs = getAdminLocalChatCutoffs();
 
         chatMessages.forEach(msg => {
 
@@ -4682,7 +4724,7 @@
 
         // حساب عدد الرسائل غير المقروءة لكل مستخدم لعرضها بجانب اسمه في القائمة
         let unreadCounts = {};
-        const unreadCutoffs = getDeletedChatCutoffs();
+        const unreadCutoffs = getAdminLocalChatCutoffs();
         chatMessages.forEach(m => {
             if (m.type === 'admin_password' || m.type === 'deleted_user' || !m.userId) return;
             if (isMessageHiddenByChatDeletion(m, unreadCutoffs)) return;
@@ -4894,21 +4936,9 @@
 
         const deletedUserId = selectedAdminUserId;
 
-        chatMessages = chatMessages.filter(
-            m => m.userId !== deletedUserId || m.type === 'admin_password'
-        );
-
-        chatMessages.push({
-            id: 'deleted_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-            userId: deletedUserId,
-            type: 'deleted_user',
-            sender: 'system',
-            deletedAt: Date.now(),
-            timestamp: Date.now(),
-            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-        });
-
-        await saveData();
+        // الحذف هنا محلي للإدارة فقط.
+        // لا نحذف أي رسالة من Supabase ولا من جهاز العميل.
+        setAdminLocalChatCutoff(deletedUserId, Date.now());
 
         selectedAdminUserId = null;
 
@@ -4962,7 +4992,7 @@
             return;
         }
 
-        const renderCutoffs = getDeletedChatCutoffs();
+        const renderCutoffs = getAdminLocalChatCutoffs();
         const specificMessages =
             chatMessages.filter(
                 m =>
