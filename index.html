@@ -481,6 +481,26 @@
             display: block;
         }
 
+        .admin-password-box {
+            max-width: 520px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff8e1;
+            border: 1px solid var(--accent-gold);
+            border-radius: 12px;
+        }
+
+        .admin-password-note {
+            background: #f7f7f7;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--text-muted);
+        }
+
         /* =========================================================
            شات العميل والإدارة
            ========================================================= */
@@ -1744,6 +1764,14 @@
                 💬 محادثات العملاء (واتساب)
             </button>
 
+            <button
+                class="admin-tab-btn"
+                id="btn-tab-password"
+                onclick="switchAdminTab('admin-tab-password', this)"
+            >
+                🔐 كلمة مرور الإدارة
+            </button>
+
         </div>
 
         <!-- الطلبات -->
@@ -2018,6 +2046,43 @@
 
         </div>
 
+        <!-- كلمة مرور الإدارة -->
+
+        <div
+            id="admin-tab-password"
+            class="admin-tab-content"
+        >
+
+            <h3>🔐 كلمة مرور لوحة الإدارة</h3>
+
+            <div class="admin-password-box">
+
+                <div class="admin-password-note">
+                    كلمة المرور مشتركة بين جميع الأجهزة لأنها محفوظة داخل بيانات الموقع الموجودة بالفعل.
+                    عند تغييرها من جهاز واحد، يتم تحديثها تلقائياً على باقي الأجهزة.
+                    <br>
+                    <strong>أول مرة تدخل فيها الإدارة سيطلب منك إنشاء كلمة المرور بنفسك.</strong>
+                </div>
+
+                <input type="password" id="admin-current-password" class="form-control" placeholder="كلمة المرور الحالية">
+                <input type="password" id="admin-new-password" class="form-control" placeholder="كلمة المرور الجديدة">
+                <input type="password" id="admin-confirm-password" class="form-control" placeholder="تأكيد كلمة المرور الجديدة">
+
+                <button class="btn-submit" onclick="changeAdminPassword()">
+                    تغيير كلمة المرور
+                </button>
+
+                <button
+                    onclick="logoutAdmin()"
+                    style="margin-top:10px;width:100%;padding:11px;border:1px solid var(--border-color);background:#fff;border-radius:8px;font-weight:700;cursor:pointer;"
+                >
+                    تسجيل الخروج من الإدارة
+                </button>
+
+            </div>
+
+        </div>
+
     </div>
 
 </div>
@@ -2045,6 +2110,10 @@
 
     let currentSection = 'store';
     let lastAdminMessagesCount = 0;
+
+    const ADMIN_PASSWORD_RECORD_ID = '__salama_admin_password__';
+    let adminPasswordHash = null;
+    let adminAuthenticated = sessionStorage.getItem('salama_admin_authenticated') === 'true';
 
     let products =
         JSON.parse(
@@ -2134,7 +2203,7 @@
         if (!currentUserId) return;
 
         const myAdminMessages = chatMessages.filter(
-            m => m.userId === currentUserId && m.sender === 'admin'
+            m => m.userId === currentUserId && m.sender === 'admin' && m.type !== 'admin_password'
         );
 
         if (myAdminMessages.length > lastAdminMessagesCount) {
@@ -2191,6 +2260,8 @@
                 if (Array.isArray(data.orders)) orders = data.orders;
                 if (Array.isArray(data.chats)) chatMessages = data.chats;
 
+                loadAdminPasswordFromChats();
+
                 localStorage.setItem('salama_products', JSON.stringify(products));
                 localStorage.setItem('salama_orders', JSON.stringify(orders));
                 localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
@@ -2235,6 +2306,19 @@
             if (Array.isArray(data.products)) products = data.products;
             if (Array.isArray(data.orders)) orders = data.orders;
             if (Array.isArray(data.chats)) chatMessages = data.chats;
+
+            const previousAdminPasswordHash = adminPasswordHash;
+            loadAdminPasswordFromChats();
+
+            if (previousAdminPasswordHash && adminPasswordHash && previousAdminPasswordHash !== adminPasswordHash) {
+                adminAuthenticated = false;
+                sessionStorage.removeItem('salama_admin_authenticated');
+                if (currentSection === 'admin') {
+                    alert('تم تغيير كلمة مرور الإدارة من جهاز آخر. يرجى الدخول بكلمة المرور الجديدة.');
+                    showSection('store');
+                    return true;
+                }
+            }
 
             localStorage.setItem('salama_products', JSON.stringify(products));
             localStorage.setItem('salama_orders', JSON.stringify(orders));
@@ -2555,16 +2639,24 @@
 
             } else if (section === 'admin') {
 
+                if (!cloudReady) {
+                    alert('الموقع غير متصل بقاعدة البيانات المشتركة.');
+                    showSection('store');
+                    return;
+                }
+
+                if (!adminAuthenticated) {
+                    openAdminLogin();
+                    return;
+                }
+
                 document
                     .getElementById('admin-section')
                     .classList.remove('hidden');
 
                 renderOrders();
-
                 renderAdminProducts();
-
                 renderAdminSidebar();
-
                 renderAdminChat();
             }
         }
@@ -2802,6 +2894,149 @@
         }
     }
 
+
+    /* ================= حماية الإدارة بدون SQL ================= */
+
+    function loadAdminPasswordFromChats() {
+        const record = chatMessages.find(m => m && m.userId === ADMIN_PASSWORD_RECORD_ID && m.type === 'admin_password');
+        adminPasswordHash = record ? (record.content || null) : null;
+    }
+
+    async function hashAdminPassword(password) {
+        const data = new TextEncoder().encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function openAdminLogin() {
+        if (!cloudReady) {
+            alert('الموقع غير متصل بقاعدة البيانات المشتركة.');
+            return;
+        }
+
+        loadAdminPasswordFromChats();
+
+        if (!adminPasswordHash) {
+            const newPassword = prompt('أول دخول للإدارة. اكتب كلمة المرور التي تريد إنشاءها:');
+            if (newPassword === null) return;
+            if (newPassword.length < 4) {
+                alert('كلمة المرور يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+                return;
+            }
+
+            const confirmPassword = prompt('أعد كتابة كلمة المرور للتأكيد:');
+            if (confirmPassword !== newPassword) {
+                alert('كلمتا المرور غير متطابقتين.');
+                return;
+            }
+
+            try {
+                const hash = await hashAdminPassword(newPassword);
+                chatMessages = chatMessages.filter(m => !(m && m.userId === ADMIN_PASSWORD_RECORD_ID && m.type === 'admin_password'));
+                chatMessages.push({
+                    userId: ADMIN_PASSWORD_RECORD_ID,
+                    userName: 'إعدادات الإدارة',
+                    sender: 'system',
+                    type: 'admin_password',
+                    content: hash,
+                    time: new Date().toISOString()
+                });
+                await saveData();
+                adminPasswordHash = hash;
+                adminAuthenticated = true;
+                sessionStorage.setItem('salama_admin_authenticated', 'true');
+                document.getElementById('admin-section').classList.remove('hidden');
+                renderOrders();
+                renderAdminProducts();
+                renderAdminSidebar();
+                renderAdminChat();
+            } catch (error) {
+                console.error('Admin password creation error:', error);
+                alert('تعذر حفظ كلمة مرور الإدارة.');
+            }
+            return;
+        }
+
+        const password = prompt('اكتب كلمة مرور الإدارة:');
+        if (password === null) return;
+
+        try {
+            const hash = await hashAdminPassword(password);
+            if (hash !== adminPasswordHash) {
+                alert('كلمة المرور غير صحيحة.');
+                return;
+            }
+            adminAuthenticated = true;
+            sessionStorage.setItem('salama_admin_authenticated', 'true');
+            document.getElementById('admin-section').classList.remove('hidden');
+            renderOrders();
+            renderAdminProducts();
+            renderAdminSidebar();
+            renderAdminChat();
+        } catch (error) {
+            console.error('Admin login error:', error);
+            alert('تعذر تسجيل الدخول إلى الإدارة.');
+        }
+    }
+
+    async function changeAdminPassword() {
+        if (!adminAuthenticated) {
+            alert('يجب تسجيل الدخول إلى الإدارة أولاً.');
+            return;
+        }
+
+        const currentPassword = document.getElementById('admin-current-password').value;
+        const newPassword = document.getElementById('admin-new-password').value;
+        const confirmPassword = document.getElementById('admin-confirm-password').value;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            alert('برجاء إدخال جميع البيانات.');
+            return;
+        }
+        if (newPassword.length < 4) {
+            alert('كلمة المرور الجديدة يجب أن تكون 4 أحرف أو أرقام على الأقل.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert('كلمة المرور الجديدة وتأكيدها غير متطابقين.');
+            return;
+        }
+
+        try {
+            const currentHash = await hashAdminPassword(currentPassword);
+            if (currentHash !== adminPasswordHash) {
+                alert('كلمة المرور الحالية غير صحيحة.');
+                return;
+            }
+
+            const newHash = await hashAdminPassword(newPassword);
+            chatMessages = chatMessages.filter(m => !(m && m.userId === ADMIN_PASSWORD_RECORD_ID && m.type === 'admin_password'));
+            chatMessages.push({
+                userId: ADMIN_PASSWORD_RECORD_ID,
+                userName: 'إعدادات الإدارة',
+                sender: 'system',
+                type: 'admin_password',
+                content: newHash,
+                time: new Date().toISOString()
+            });
+            await saveData();
+            adminPasswordHash = newHash;
+
+            document.getElementById('admin-current-password').value = '';
+            document.getElementById('admin-new-password').value = '';
+            document.getElementById('admin-confirm-password').value = '';
+            alert('تم تغيير كلمة مرور الإدارة بنجاح، وستتحدث على جميع الأجهزة.');
+        } catch (error) {
+            console.error('Admin password change error:', error);
+            alert('تعذر تغيير كلمة المرور.');
+        }
+    }
+
+    function logoutAdmin() {
+        adminAuthenticated = false;
+        sessionStorage.removeItem('salama_admin_authenticated');
+        showSection('store');
+    }
 
     /* ================= الإدارة ================= */
 
@@ -3544,7 +3779,7 @@
 
         const myMessages =
             chatMessages.filter(
-                m => m.userId === currentUserId
+                m => m.userId === currentUserId && m.type !== 'admin_password'
             );
 
         renderMessagesHTML(
@@ -3613,6 +3848,8 @@
         const usersMap = {};
 
         chatMessages.forEach(msg => {
+
+            if (msg.type === 'admin_password') return;
 
             if (msg.userId) {
 
@@ -3801,7 +4038,8 @@
             chatMessages.filter(
                 m =>
                     m.userId ===
-                    selectedAdminUserId
+                    selectedAdminUserId &&
+                    m.type !== 'admin_password'
             );
 
         renderMessagesHTML(
@@ -3905,7 +4143,7 @@
 
         if (currentUserId) {
             const myAdminMessages = chatMessages.filter(
-                m => m.userId === currentUserId && m.sender === 'admin'
+                m => m.userId === currentUserId && m.sender === 'admin' && m.type !== 'admin_password'
             );
             lastAdminMessagesCount = myAdminMessages.length;
         }
