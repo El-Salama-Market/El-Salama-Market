@@ -2291,9 +2291,25 @@
     /* ================= حفظ ومزامنة البيانات ================= */
 
     async function saveData() {
-        localStorage.setItem('salama_products', JSON.stringify(products));
-        localStorage.setItem('salama_orders', JSON.stringify(orders));
-        localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
+        // لا نسمح لامتلاء localStorage بإيقاف الموقع، خصوصاً عند إرسال الصور.
+        try {
+            localStorage.setItem('salama_products', JSON.stringify(products));
+            localStorage.setItem('salama_orders', JSON.stringify(orders));
+
+            // الصور تُحفظ في قاعدة البيانات، بينما نسخة localStorage تكون
+            // بدون محتوى الصورة لتجنب امتلاء مساحة التخزين المحلية.
+            const localChats = chatMessages.map(function(m) {
+                if (m && m.type === 'image') {
+                    return Object.assign({}, m, { content: '' });
+                }
+                return m;
+            });
+
+            localStorage.setItem('salama_chats', JSON.stringify(localChats));
+        } catch (storageError) {
+            console.warn('Local storage is full; continuing with cloud save.', storageError);
+        }
+
         if (!cloudReady) {
             throw new Error('الاتصال بقاعدة البيانات غير جاهز');
         }
@@ -2343,7 +2359,17 @@
         pendingChatMessageIds.forEach(id => {
             if (payloadChats.some(m => m.id === id)) pendingChatMessageIds.delete(id);
         });
-        try { localStorage.setItem('salama_chats', JSON.stringify(chatMessages)); } catch (e) { console.warn('Chat local cache is full; cloud save succeeded.', e); }
+        try {
+            const localChats = chatMessages.map(function(m) {
+                if (m && m.type === 'image') {
+                    return Object.assign({}, m, { content: '' });
+                }
+                return m;
+            });
+            localStorage.setItem('salama_chats', JSON.stringify(localChats));
+        } catch (e) {
+            console.warn('Chat local cache is full; cloud save succeeded.', e);
+        }
         return true;
     }
 
@@ -3757,58 +3783,83 @@
 
     function compressChatImage(file) {
         return new Promise((resolve, reject) => {
+            if (!file || !file.type || !file.type.startsWith('image/')) {
+                reject(new Error('الملف المختار ليس صورة'));
+                return;
+            }
+
             const reader = new FileReader();
+
             reader.onload = function(e) {
                 const img = new Image();
+
                 img.onload = function() {
-                    const maxSize = 900;
-                    let width = img.naturalWidth || img.width;
-                    let height = img.naturalHeight || img.height;
+                    try {
+                        // ضغط الصورة بشكل أقوى حتى لا يتسبب إرسالها في امتلاء
+                        // localStorage أو زيادة حجم بيانات الشات بشكل كبير.
+                        const maxSize = 700;
 
-                    if (!width || !height) {
-                        reject(new Error('تعذر قراءة الصورة'));
-                        return;
+                        let width = img.naturalWidth || img.width;
+                        let height = img.naturalHeight || img.height;
+
+                        if (!width || !height) {
+                            reject(new Error('تعذر قراءة أبعاد الصورة'));
+                            return;
+                        }
+
+                        const scale = Math.min(1, maxSize / Math.max(width, height));
+
+                        width = Math.max(1, Math.round(width * scale));
+                        height = Math.max(1, Math.round(height * scale));
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d', { alpha: false });
+
+                        if (!ctx) {
+                            reject(new Error('المتصفح لا يدعم معالجة الصورة'));
+                            return;
+                        }
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // نبدأ بجودة صغيرة مناسبة للشات.
+                        let result = canvas.toDataURL('image/jpeg', 0.55);
+
+                        // لو الناتج كبير، نقلل الجودة تدريجياً.
+                        if (result.length > 450000) {
+                            result = canvas.toDataURL('image/jpeg', 0.42);
+                        }
+
+                        if (result.length > 300000) {
+                            result = canvas.toDataURL('image/jpeg', 0.32);
+                        }
+
+                        if (result.length > 220000) {
+                            result = canvas.toDataURL('image/jpeg', 0.25);
+                        }
+
+                        resolve(result);
+                    } catch (err) {
+                        reject(err);
                     }
-
-                    const scale = Math.min(1, maxSize / Math.max(width, height));
-                    width = Math.max(1, Math.round(width * scale));
-                    height = Math.max(1, Math.round(height * scale));
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d', { alpha: false });
-                    if (!ctx) {
-                        reject(new Error('المتصفح لا يدعم معالجة الصورة'));
-                        return;
-                    }
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, width, height);
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // ضغط الصورة قبل تخزينها حتى لا يكبر حجم بيانات الشات
-                    // ولا يتخطى localStorage أو حجم سجل Supabase.
-                    let result = canvas.toDataURL('image/jpeg', 0.72);
-
-                    // لو الصورة ما زالت كبيرة، نضغطها أكثر تدريجياً.
-                    if (result.length > 900000) {
-                        result = canvas.toDataURL('image/jpeg', 0.58);
-                    }
-                    if (result.length > 650000) {
-                        result = canvas.toDataURL('image/jpeg', 0.45);
-                    }
-
-                    resolve(result);
                 };
+
                 img.onerror = function() {
                     reject(new Error('تعذر فتح الصورة'));
                 };
+
                 img.src = e.target.result;
             };
+
             reader.onerror = function() {
                 reject(new Error('تعذر قراءة ملف الصورة'));
             };
+
             reader.readAsDataURL(file);
         });
     }
@@ -3816,7 +3867,14 @@
     async function sendChatImage(fileInput, sender) {
         const isCustomer = sender === 'customer';
         const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
         if (!file) return;
+
+        if (!file.type || !file.type.startsWith('image/')) {
+            alert('من فضلك اختر صورة فقط.');
+            if (fileInput) fileInput.value = '';
+            return;
+        }
 
         let targetUserId = currentUserId;
         let targetUserName = currentUserName;
@@ -3829,6 +3887,7 @@
             }
 
             targetUserId = selectedAdminUserId;
+
             const userObj = getUserObjById(selectedAdminUserId);
             targetUserName = userObj ? userObj.name : 'عميل';
         }
@@ -3837,7 +3896,12 @@
         fileInput.value = '';
 
         try {
+            // تجهيز الصورة في الذاكرة فقط أولاً.
             const compressedImage = await compressChatImage(file);
+
+            if (!compressedImage || compressedImage.length > 500000) {
+                throw new Error('حجم الصورة بعد الضغط ما زال كبيراً');
+            }
 
             const imageMessage = {
                 id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
@@ -3855,10 +3919,11 @@
             chatMessages = chatMessages.filter(
                 m => !(m.userId === targetUserId && m.type === 'deleted_user')
             );
+
             chatMessages.push(imageMessage);
             pendingChatMessageIds.add(imageMessage.id);
 
-            // تظهر الصورة فوراً بدون انتظار Supabase.
+            // الصورة تظهر فوراً عند المرسل.
             if (isCustomer) {
                 renderCustomerChat();
             } else {
@@ -3866,10 +3931,13 @@
                 renderAdminChat();
             }
 
-            // الحفظ في الخلفية مثل الرسائل النصية.
+            // الحفظ في الخلفية.
+            // ننتظر الحفظ هنا حتى يتم التقاط أي خطأ بشكل صحيح،
+            // لكن بدون إعادة تحميل الصفحة أو إخراج المستخدم من الموقع.
             if (!chatSavePromise) {
                 chatSavePromise = (async () => {
                     chatSaveInProgress = true;
+
                     try {
                         await saveData();
                     } finally {
@@ -3879,13 +3947,35 @@
                 })();
             }
 
-            chatSavePromise.catch(function(error) {
-                console.error('Cloud image save error:', error);
-                alert('تعذر حفظ الصورة حالياً. حاول إرسالها مرة أخرى.');
-            });
+            await chatSavePromise;
+
         } catch (error) {
-            console.error('Image processing error:', error);
-            alert('حصلت مشكلة في تجهيز الصورة للإرسال. جرّب صورة أخرى.');
+            console.error('Chat image send error:', error);
+
+            // لو فشل الحفظ، نحذف الصورة المعلقة من الواجهة حتى لا تبقى
+            // رسالة تبدو وكأنها أُرسلت وهي لم تُحفظ.
+            const failedIndex = chatMessages.findIndex(
+                m => m.type === 'image' && pendingChatMessageIds.has(m.id)
+            );
+
+            if (failedIndex !== -1) {
+                const failedId = chatMessages[failedIndex].id;
+                chatMessages.splice(failedIndex, 1);
+                pendingChatMessageIds.delete(failedId);
+            }
+
+            try {
+                if (isCustomer) {
+                    renderCustomerChat();
+                } else {
+                    renderAdminSidebar();
+                    renderAdminChat();
+                }
+            } catch (renderError) {
+                console.error('Chat render after image error:', renderError);
+            }
+
+            alert('تعذر إرسال الصورة حالياً. جرّب صورة أخرى أصغر حجماً.');
         }
     }
 
