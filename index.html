@@ -464,6 +464,7 @@
             transition: all 0.2s ease;
             white-space: nowrap;
             flex-shrink: 0;
+            position: relative;
         }
 
         .admin-tab-btn.active {
@@ -498,6 +499,18 @@
             font-size: 13px;
             line-height: 1.8;
             color: var(--text-muted);
+        }
+
+        /* شارة الإشعار داخل شات الإدارة */
+        .admin-unread-badge {
+            background-color: var(--primary);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 12px;
+            margin-right: 6px;
+            display: inline-block;
         }
 
         /* =========================================================
@@ -1307,7 +1320,227 @@
             background: #ffebee;
         }
 
-</style>
+
+        /* ================= واتساب - تحسينات الشات ================= */
+        .wa-chat-area {
+            background-color: #efeae2;
+            background-image:
+                linear-gradient(rgba(239,234,226,0.35), rgba(239,234,226,0.35)),
+                url('Logo El Salama.jpeg');
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: 420px 420px;
+        }
+
+        .wa-chat-header {
+            min-height: 58px;
+            padding: 10px 16px;
+            background: rgba(240,242,245,0.98);
+            backdrop-filter: blur(8px);
+        }
+
+        .wa-chat-messages {
+            padding: 16px 18px;
+            gap: 7px;
+            scroll-behavior: smooth;
+            overscroll-behavior: contain;
+        }
+
+        .chat-msg {
+            max-width: min(72%, 520px);
+            padding: 7px 10px 5px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.55;
+            font-weight: 500;
+            box-shadow: 0 1px 2px rgba(0,0,0,.14);
+            backdrop-filter: none;
+            word-break: break-word;
+        }
+
+        .chat-msg.sent {
+            align-self: flex-start;
+            background: #ffffff;
+            border-top-right-radius: 2px;
+        }
+
+        .chat-msg.received {
+            align-self: flex-end;
+            background: #d9fdd3;
+            border-top-left-radius: 2px;
+        }
+
+        .chat-msg img {
+            display: block;
+            width: auto;
+            max-width: min(300px, 100%);
+            max-height: 360px;
+            border-radius: 7px;
+            margin: 0 0 2px;
+            object-fit: contain;
+            background: #f4f4f4;
+        }
+
+        .chat-msg .msg-meta {
+            font-size: 9px;
+            color: #667781;
+            margin-top: 2px;
+            text-align: left;
+            direction: rtl;
+            line-height: 1.2;
+        }
+
+        .chat-input-bar {
+            min-height: 62px;
+            padding: 8px 10px;
+            gap: 7px;
+            background: #f0f2f5;
+            border-top: 1px solid rgba(0,0,0,.06);
+        }
+
+        .chat-input-bar input[type="text"] {
+            min-height: 44px;
+            padding: 10px 15px;
+            border-radius: 22px;
+            border: 1px solid #e0e3e7;
+            box-shadow: none;
+        }
+
+        .chat-input-bar input[type="text"]:focus {
+            border-color: #cfd4d9;
+        }
+
+        .file-label-btn {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 20px;
+            border: none;
+            background: transparent;
+            color: #54656f;
+            transition: background .15s ease, transform .15s ease;
+        }
+
+        .file-label-btn:hover {
+            background: rgba(0,0,0,.06);
+            transform: none;
+        }
+
+        .btn-chat-send {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0;
+            background: #25d366;
+            box-shadow: 0 1px 2px rgba(0,0,0,.12);
+        }
+
+        .btn-chat-send::after {
+            content: "➤";
+            font-size: 20px;
+            transform: rotate(180deg);
+        }
+
+        .btn-chat-send:hover {
+            background: #20bd5a;
+        }
+
+        .chat-image-preview {
+            display: none;
+            position: absolute;
+            bottom: 68px;
+            right: 10px;
+            z-index: 10;
+            background: rgba(255,255,255,.98);
+            border: 1px solid #dfe3e6;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 6px 22px rgba(0,0,0,.18);
+        }
+
+        .chat-image-preview.active {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-image-preview img {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .chat-image-preview button {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: #e9edef;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .wa-chat-area {
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .wa-chat-messages {
+                padding: 10px 8px;
+            }
+
+            .chat-msg {
+                max-width: 88%;
+                font-size: 12px;
+                padding: 6px 9px 4px;
+            }
+
+            .chat-msg img {
+                max-width: 245px;
+                max-height: 300px;
+            }
+
+            .chat-input-bar {
+                min-height: 58px;
+                padding: 6px;
+            }
+
+            .chat-input-bar input[type="text"] {
+                min-height: 42px;
+                font-size: 11px;
+                border-radius: 21px;
+            }
+
+            .file-label-btn,
+            .btn-chat-send {
+                width: 40px;
+                height: 40px;
+            }
+
+            .file-label-btn {
+                font-size: 18px;
+            }
+
+            .btn-chat-send::after {
+                font-size: 18px;
+            }
+
+            .chat-image-preview {
+                bottom: 62px;
+                right: 7px;
+            }
+        }
+
+    </style>
 </head>
 
 <body>
@@ -1348,6 +1581,7 @@
 
             <button class="btn-nav" onclick="showSection('admin')">
                 الإدارة ⚙️
+                <span id="admin-global-badge" class="chat-notification-badge hidden" style="top:-2px; left:-2px;">0</span>
             </button>
 
         </div>
@@ -1754,6 +1988,8 @@
 
                     <div class="chat-input-bar">
 
+                        <div id="customer-chat-image-preview" class="chat-image-preview"></div>
+
                         <input
                             type="text"
                             id="chat-input-text"
@@ -1826,6 +2062,7 @@
                 onclick="switchAdminTab('admin-tab-chat', this)"
             >
                 💬 محادثات العملاء (واتساب)
+                <span id="admin-chat-tab-badge" class="admin-unread-badge hidden">0</span>
             </button>
 
             <button
@@ -2083,6 +2320,8 @@
 
                     <div class="chat-input-bar">
 
+                        <div id="admin-chat-image-preview" class="chat-image-preview"></div>
+
                         <input
                             type="text"
                             id="admin-chat-input-text"
@@ -2180,6 +2419,7 @@
 
     let currentSection = 'store';
     let lastAdminMessagesCount = 0;
+    let lastUnreadAdminCount = 0; // لمراقبة عدد الرسائل الجديدة للإدارة لتشغيل التنبيه والصوت
 
     const ADMIN_PASSWORD_RECORD_ID = '__salama_admin_password__';
     let adminPasswordHash = null;
@@ -2246,46 +2486,285 @@
 
     /* ================= الصوت والتنبيهات ================= */
 
+    let notificationAudioContext = null;
+    let notificationAudioUnlocked = false;
+
+    // فتح الصوت بعد أول تفاعل من المستخدم حتى يعمل على الهاتف والكمبيوتر
+    // بدون أن يمنعه المتصفح بسبب سياسة التشغيل التلقائي.
+    function unlockNotificationAudio() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+
+            if (!notificationAudioContext) {
+                notificationAudioContext = new AudioCtx();
+            }
+
+            if (notificationAudioContext.state === 'suspended') {
+                notificationAudioContext.resume().catch(() => {});
+            }
+
+            notificationAudioUnlocked = true;
+        } catch (e) {
+            console.log('Audio unlock error:', e);
+        }
+    }
+
     function playNotificationSound() {
         try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+
+            if (!notificationAudioContext) {
+                notificationAudioContext = new AudioCtx();
+            }
+
+            const audioCtx = notificationAudioContext;
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+
+            const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+            osc.frequency.setValueAtTime(587.33, now);
+            osc.frequency.setValueAtTime(880, now + 0.10);
 
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.exponentialRampToValueAtTime(0.30, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
 
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
         } catch (e) {
-            console.log("Audio play error:", e);
+            console.log('Audio play error:', e);
         }
+    }
+
+    // الصوت يحتاج تفاعل واحد من المستخدم في كل متصفح/جهاز.
+    document.addEventListener('click', unlockNotificationAudio, { passive: true });
+    document.addEventListener('touchstart', unlockNotificationAudio, { passive: true });
+    document.addEventListener('keydown', unlockNotificationAudio, { passive: true });
+
+    function getCustomerIncomingMessages() {
+        if (!currentUserId) return [];
+        return chatMessages.filter(
+            m => m &&
+                 m.userId === currentUserId &&
+                 m.sender === 'admin' &&
+                 m.type !== 'admin_password' &&
+                 !m.deletedForCustomer
+        );
+    }
+
+    function getAdminIncomingMessages(userId) {
+        if (!userId) return [];
+        return chatMessages.filter(
+            m => m &&
+                 m.userId === userId &&
+                 m.sender === 'customer' &&
+                 m.type !== 'admin_password' &&
+                 !m.deletedForAdmin
+        );
+    }
+
+    function getUnreadMessages(messages, storageKey) {
+        const lastSeenId = localStorage.getItem(storageKey);
+
+        // أول مرة على هذا الجهاز: لا نعتبر الرسائل القديمة رسائل جديدة.
+        if (!lastSeenId) return [];
+
+        const index = messages.findIndex(m => m.id === lastSeenId);
+        if (index === -1) {
+            // لو الرسالة المحفوظة اتغيرت/اتحذفت، لا نعمل إنذار كاذب.
+            return [];
+        }
+
+        return messages.slice(index + 1);
+    }
+
+    function markCustomerChatAsSeen() {
+        const messages = getCustomerIncomingMessages();
+        if (!currentUserId) return;
+
+        const key = 'salama_customer_chat_seen_' + currentUserId;
+        if (messages.length) {
+            localStorage.setItem(key, messages[messages.length - 1].id);
+        }
+
+        const badge = document.getElementById('chat-notification');
+        if (badge) {
+            badge.innerText = '';
+            badge.classList.add('hidden');
+        }
+
+        lastAdminMessagesCount = messages.length;
+    }
+
+    function initializeCustomerChatNotifications() {
+        if (!currentUserId) return;
+
+        const messages = getCustomerIncomingMessages();
+        const key = 'salama_customer_chat_seen_' + currentUserId;
+
+        if (!localStorage.getItem(key) && messages.length) {
+            localStorage.setItem(key, messages[messages.length - 1].id);
+        }
+
+        lastAdminMessagesCount = messages.length;
+        updateCustomerNotificationBadge(false);
+    }
+
+    function updateCustomerNotificationBadge(playSound = true) {
+        if (!currentUserId) return;
+
+        const messages = getCustomerIncomingMessages();
+        const key = 'salama_customer_chat_seen_' + currentUserId;
+        const unread = getUnreadMessages(messages, key);
+        const badge = document.getElementById('chat-notification');
+
+        if (!badge) return;
+
+        if (unread.length > 0 && currentSection !== 'chat') {
+            badge.innerText = unread.length > 99 ? '99+' : String(unread.length);
+            badge.classList.remove('hidden');
+
+            if (playSound && unread.length > lastAdminMessagesCount) {
+                playNotificationSound();
+            }
+        } else {
+            badge.innerText = '';
+            badge.classList.add('hidden');
+        }
+
+        lastAdminMessagesCount = unread.length;
     }
 
     function checkNewCustomerNotifications() {
-        if (!currentUserId) return;
-
-        const myAdminMessages = chatMessages.filter(
-            m => m.userId === currentUserId && m.sender === 'admin' && m.type !== 'admin_password'
-        );
-
-        if (myAdminMessages.length > lastAdminMessagesCount) {
-            if (lastAdminMessagesCount !== 0 && currentSection !== 'chat') {
-                const notifBadge = document.getElementById('chat-notification');
-                if (notifBadge) notifBadge.classList.remove('hidden');
-                playNotificationSound();
-            }
-        }
-        lastAdminMessagesCount = myAdminMessages.length;
+        updateCustomerNotificationBadge(true);
     }
 
+    function getAdminSeenMap() {
+        try {
+            return JSON.parse(localStorage.getItem('salama_admin_chat_seen') || '{}');
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveAdminSeenMap(map) {
+        localStorage.setItem('salama_admin_chat_seen', JSON.stringify(map));
+    }
+
+    function markAdminChatAsSeen(userId) {
+        if (!userId) return;
+
+        const messages = getAdminIncomingMessages(userId);
+        if (!messages.length) return;
+
+        const map = getAdminSeenMap();
+        map[userId] = messages[messages.length - 1].id;
+        saveAdminSeenMap(map);
+
+        checkAdminNotifications();
+    }
+
+    function initializeAdminChatNotifications() {
+        const map = getAdminSeenMap();
+        let changed = false;
+
+        const userIds = [...new Set(
+            chatMessages
+                .filter(m => m && m.sender === 'customer' && m.userId && m.type !== 'admin_password')
+                .map(m => m.userId)
+        )];
+
+        // أول تشغيل: اعتبر الموجود قديماً مقروءاً، حتى لا تظهر علامات حمراء وهمية.
+        userIds.forEach(userId => {
+            if (!map[userId]) {
+                const messages = getAdminIncomingMessages(userId);
+                if (messages.length) {
+                    map[userId] = messages[messages.length - 1].id;
+                    changed = true;
+                }
+            }
+        });
+
+        if (changed) saveAdminSeenMap(map);
+        lastUnreadAdminCount = 0;
+        checkAdminNotifications();
+    }
+
+    // إشعار الإدارة: علامة حمراء واحدة فقط داخل تبويب "محادثات العملاء".
+    function checkAdminNotifications() {
+        const tabBadge = document.getElementById('admin-chat-tab-badge');
+
+        if (!adminAuthenticated) {
+            if (tabBadge) tabBadge.classList.add('hidden');
+            lastUnreadAdminCount = 0;
+            return;
+        }
+
+        const map = getAdminSeenMap();
+        let totalUnreadForAdmin = 0;
+
+        const userIds = [...new Set(
+            chatMessages
+                .filter(m => m && m.sender === 'customer' && m.userId && m.type !== 'admin_password')
+                .map(m => m.userId)
+        )];
+
+        userIds.forEach(userId => {
+            // أثناء فتح محادثة هذا العميل، رسائله تعتبر مقروءة.
+            if (currentSection === 'admin' && selectedAdminUserId === userId) {
+                return;
+            }
+
+            const messages = getAdminIncomingMessages(userId);
+            const unread = getUnreadMessages(messages, 'salama_admin_seen_' + userId);
+
+            // نستخدم الخريطة أيضاً، مع دعم البيانات القديمة.
+            const seenId = map[userId];
+            let count = 0;
+
+            if (seenId) {
+                const index = messages.findIndex(m => m.id === seenId);
+                count = index >= 0 ? messages.length - index - 1 : 0;
+            }
+
+            if (!count && !seenId) {
+                count = 0;
+            }
+
+            totalUnreadForAdmin += count;
+        });
+
+        if (tabBadge) {
+            if (currentSection === 'admin' && totalUnreadForAdmin > 0) {
+                tabBadge.innerText = totalUnreadForAdmin > 99 ? '99+' : String(totalUnreadForAdmin);
+                tabBadge.classList.remove('hidden');
+            } else {
+                tabBadge.innerText = '';
+                tabBadge.classList.add('hidden');
+            }
+        }
+
+        if (
+            adminAuthenticated &&
+            currentSection === 'admin' &&
+            totalUnreadForAdmin > lastUnreadAdminCount
+        ) {
+            playNotificationSound();
+        }
+
+        lastUnreadAdminCount = totalUnreadForAdmin;
+    }
 
     /* ================= حفظ ومزامنة البيانات ================= */
 
@@ -2353,6 +2832,51 @@
         return true;
     }
 
+    // طابور حفظ الرسائل يمنع ضياع الرسائل عند إرسال أكثر من رسالة/صورة بسرعة.
+    function queueChatSave() {
+        chatSaveQueued = true;
+
+        if (chatSavePromise) {
+            return chatSavePromise;
+        }
+
+        chatSavePromise = (async () => {
+            chatSaveInProgress = true;
+
+            try {
+                while (chatSaveQueued || pendingChatMessageIds.size > 0) {
+                    chatSaveQueued = false;
+
+                    try {
+                        await saveData();
+                    } catch (error) {
+                        console.error('Chat save error:', error);
+
+                        // نحتفظ بالرسائل في الذاكرة والمحلي حتى تعود قاعدة البيانات.
+                        try {
+                            localStorage.setItem(
+                                'salama_chats',
+                                JSON.stringify(chatMessages.map(function(m) {
+                                    return m && m.type === 'image'
+                                        ? Object.assign({}, m, { content: '' })
+                                        : m;
+                                }))
+                            );
+                        } catch (e) {}
+
+                        // لا نوقف الشات بسبب فشل حفظ مؤقت.
+                        break;
+                    }
+                }
+            } finally {
+                chatSaveInProgress = false;
+                chatSavePromise = null;
+            }
+        })();
+
+        return chatSavePromise;
+    }
+
     async function loadCloudData() {
         try {
             const { data, error } = await supabaseClient
@@ -2397,6 +2921,9 @@
     async function refreshCloudData() {
         if (!cloudReady) return false;
 
+        // لا نسمح للمزامنة الدورية أن تستبدل رسالة/صورة ما زالت قيد الحفظ.
+        if (chatSaveInProgress || pendingChatMessageIds.size > 0) return false;
+
         try {
             const { data, error } = await supabaseClient
                 .from('site_data')
@@ -2436,6 +2963,7 @@
             if (typeof renderAdminChat === 'function') renderAdminChat();
 
             checkNewCustomerNotifications();
+            checkAdminNotifications();
             return true;
         } catch (error) {
             return false;
@@ -2445,7 +2973,6 @@
     function startCloudSync() {
         if (cloudSyncTimer) clearInterval(cloudSyncTimer);
 
-        // تم تعديل السرعة إلى 8 ثوانٍ لتجنب الضغط وتهنيج المتصفح
         cloudSyncTimer = setInterval(() => {
             refreshCloudData();
         }, 8000);
@@ -2737,9 +3264,7 @@
                     .getElementById('chat-section')
                     .classList.remove('hidden');
 
-                const notifBadge = document.getElementById('chat-notification');
-                if (notifBadge) notifBadge.classList.add('hidden');
-
+                markCustomerChatAsSeen();
                 checkCustomerChatLogin();
 
             } else if (section === 'admin') {
@@ -2763,6 +3288,10 @@
                 renderAdminProducts();
                 renderAdminSidebar();
                 renderAdminChat();
+                if (selectedAdminUserId) {
+                    markAdminChatAsSeen(selectedAdminUserId);
+                }
+                checkAdminNotifications();
             }
         }
     }
@@ -3694,7 +4223,9 @@
                 alert('الرجاء اختيار عميل من القائمة الجانبية أولاً!');
                 return;
             }
+
             targetUserId = selectedAdminUserId;
+
             const userObj = getUserObjById(selectedAdminUserId);
             targetUserName = userObj ? userObj.name : 'عميل';
         }
@@ -3706,31 +4237,33 @@
             sender: sender,
             type: 'text',
             content: text,
-            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+            time: new Date().toLocaleTimeString('ar-EG', {
+                hour: '2-digit',
+                minute: '2-digit'
+            })
         };
 
         chatMessages = chatMessages.filter(
             m => !(m.userId === targetUserId && m.type === 'deleted_user')
         );
+
         chatMessages.push(message);
         pendingChatMessageIds.add(message.id);
         textInput.value = '';
 
-        if (isCustomer) renderCustomerChat();
-        else { renderAdminSidebar(); renderAdminChat(); }
-
-        if (!chatSavePromise) {
-            chatSavePromise = (async () => {
-                chatSaveInProgress = true;
-                try {
-                    await saveData();
-                } finally {
-                    chatSaveInProgress = false;
-                    chatSavePromise = null;
-                }
-            })();
+        // الرسالة تظهر فوراً مثل واتساب بدون انتظار الشبكة.
+        if (isCustomer) {
+            renderCustomerChat();
+        } else {
+            renderAdminSidebar();
+            renderAdminChat();
+            checkAdminNotifications();
         }
+
+        // الحفظ في الخلفية وبطابور آمن حتى لا تضيع الرسائل المتتالية.
+        queueChatSave();
     }
+
 
     /* ================= إرسال صورة ================= */
 
@@ -3741,6 +4274,12 @@
                 return;
             }
 
+            // منع الصور الضخمة من تجميد الهاتف أو قاعدة البيانات.
+            if (file.size > 12 * 1024 * 1024) {
+                reject(new Error('حجم الصورة كبير جداً. اختر صورة أقل من 12 ميجابايت.'));
+                return;
+            }
+
             const reader = new FileReader();
 
             reader.onload = function(e) {
@@ -3748,7 +4287,7 @@
 
                 img.onload = function() {
                     try {
-                        const maxSize = 600;
+                        const maxSize = 1000;
                         let width = img.naturalWidth || img.width;
                         let height = img.naturalHeight || img.height;
 
@@ -3761,11 +4300,22 @@
                         canvas.height = height;
 
                         const ctx = canvas.getContext('2d', { alpha: false });
+                        if (!ctx) throw new Error('تعذر تجهيز الصورة');
+
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(0, 0, width, height);
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        let result = canvas.toDataURL('image/jpeg', 0.45);
+                        // نحاول الحفاظ على وضوح إيصال InstaPay مع تقليل الحجم.
+                        let quality = 0.68;
+                        let result = canvas.toDataURL('image/jpeg', quality);
+
+                        // سقف تقريبي 420KB للصورة الواحدة حتى لا يكبر سجل الشات بسرعة.
+                        while (result.length > 560000 && quality > 0.38) {
+                            quality -= 0.06;
+                            result = canvas.toDataURL('image/jpeg', quality);
+                        }
+
                         resolve(result);
                     } catch (err) {
                         reject(err);
@@ -3779,6 +4329,49 @@
             reader.onerror = () => reject(new Error('تعذر قراءة ملف الصورة'));
             reader.readAsDataURL(file);
         });
+    }
+
+    function showChatImagePreview(fileInput, sender) {
+        const isCustomer = sender === 'customer';
+        const preview = document.getElementById(
+            isCustomer ? 'customer-chat-image-preview' : 'admin-chat-image-preview'
+        );
+
+        const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+        if (!preview || !file) return;
+
+        const objectUrl = URL.createObjectURL(file);
+
+        preview.innerHTML = `
+            <img src="${objectUrl}" alt="معاينة الصورة">
+            <button type="button" onclick="cancelChatImagePreview('${sender}')">✕</button>
+        `;
+
+        preview.dataset.objectUrl = objectUrl;
+        preview.classList.add('active');
+    }
+
+    function cancelChatImagePreview(sender) {
+        const isCustomer = sender === 'customer';
+        const preview = document.getElementById(
+            isCustomer ? 'customer-chat-image-preview' : 'admin-chat-image-preview'
+        );
+
+        const input = document.getElementById(
+            isCustomer ? 'chat-file-input' : 'admin-chat-file-input'
+        );
+
+        if (!preview) return;
+
+        if (preview.dataset.objectUrl) {
+            URL.revokeObjectURL(preview.dataset.objectUrl);
+        }
+
+        preview.dataset.objectUrl = '';
+        preview.innerHTML = '';
+        preview.classList.remove('active');
+
+        if (input) input.value = '';
     }
 
     async function sendChatImage(fileInput, sender) {
@@ -3796,13 +4389,14 @@
                 fileInput.value = '';
                 return;
             }
+
             targetUserId = selectedAdminUserId;
+
             const userObj = getUserObjById(selectedAdminUserId);
             targetUserName = userObj ? userObj.name : 'عميل';
         }
 
-        fileInput.value = '';
-
+        // نحتفظ بالمعاينة أثناء تجهيز الصورة ثم نغلقها بعد الإرسال.
         try {
             const compressedImage = await compressChatImage(file);
 
@@ -3831,14 +4425,24 @@
             } else {
                 renderAdminSidebar();
                 renderAdminChat();
+                checkAdminNotifications();
             }
 
-            await saveData();
+            // تنظيف حقل الصورة بعد أن أصبحت الرسالة داخل الشات.
+            cancelChatImagePreview(sender);
+
+            // الحفظ في الخلفية؛ لا ننتظر الشبكة ولا نعيد تحميل الصفحة.
+            queueChatSave();
+
         } catch (error) {
             console.error('Chat image send error:', error);
-            alert('تعذر إرسال الصورة حالياً.');
+            cancelChatImagePreview(sender);
+            alert(error && error.message
+                ? error.message
+                : 'تعذر إرسال الصورة حالياً.');
         }
     }
+
 
     /* ================= عرض شات العميل ================= */
 
@@ -4015,6 +4619,22 @@
             return;
         }
 
+        // حساب عدد الرسائل غير المقروءة لكل مستخدم لعرضها بجانب اسمه في القائمة
+        let unreadCounts = {};
+        chatMessages.forEach(m => {
+            if (m.type === 'admin_password' || m.type === 'deleted_user' || !m.userId) return;
+            if (m.sender === 'customer') {
+                if (selectedAdminUserId !== m.userId || currentSection !== 'admin') {
+                    unreadCounts[m.userId] = (unreadCounts[m.userId] || 0) + 1;
+                }
+            } else if (m.sender === 'admin') {
+                unreadCounts[m.userId] = 0;
+            }
+        });
+        if (selectedAdminUserId && currentSection === 'admin') {
+            unreadCounts[selectedAdminUserId] = 0;
+        }
+
         usersList.reverse().forEach(u => {
 
             const activeClass =
@@ -4026,6 +4646,9 @@
                 u.name
                     .charAt(0)
                     .toUpperCase();
+
+            const unreadNum = unreadCounts[u.id] || 0;
+            const badgeHTML = unreadNum > 0 ? `<span class="admin-unread-badge">${unreadNum}</span>` : '';
 
             sidebar.innerHTML += `
 
@@ -4051,6 +4674,7 @@
                         <div class="wa-chat-name">
 
                             <span>
+                                ${badgeHTML}
                                 ${u.name}
                             </span>
 
@@ -4180,6 +4804,7 @@
         renderAdminSidebar();
 
         renderAdminChat();
+        checkAdminNotifications();
     }
 
 
@@ -4288,6 +4913,15 @@
     }
 
 
+    function escapeChatHTML(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     /* ================= رسم الرسائل ================= */
 
     function renderMessagesHTML(
@@ -4339,14 +4973,13 @@
 
                 let contentBody =
                     msg.type === 'text'
-
-                        ? msg.content
-
+                        ? escapeChatHTML(msg.content)
                         : `
                             <img
-                                src="${msg.content}"
-                                onclick="window.open(this.src)"
+                                src="${escapeChatHTML(msg.content)}"
+                                onclick="openChatImage(this.src)"
                                 alt="صورة مرفقة"
+                                loading="lazy"
                             >
                         `;
 
@@ -4380,6 +5013,39 @@
         }
     }
 
+
+    function openChatImage(src) {
+        if (!src) return;
+
+        const old = document.getElementById('chat-image-lightbox');
+        if (old) old.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'chat-image-lightbox';
+        overlay.style.cssText = `
+            position:fixed; inset:0; z-index:100000;
+            background:rgba(0,0,0,.88);
+            display:flex; align-items:center; justify-content:center;
+            padding:20px; cursor:zoom-out;
+        `;
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = 'صورة الشات';
+        img.style.cssText = `
+            max-width:95vw; max-height:92vh;
+            object-fit:contain; border-radius:8px;
+            box-shadow:0 8px 35px rgba(0,0,0,.45);
+            cursor:default;
+        `;
+
+        overlay.appendChild(img);
+        overlay.onclick = function(e) {
+            if (e.target === overlay) overlay.remove();
+        };
+
+        document.body.appendChild(overlay);
+    }
 
     /* ================= تعديل / حذف رسائل الإدارة ================= */
 
@@ -4544,12 +5210,10 @@
         renderProducts();
         startCloudSync();
 
-        if (currentUserId) {
-            const myAdminMessages = chatMessages.filter(
-                m => m.userId === currentUserId && m.sender === 'admin' && m.type !== 'admin_password'
-            );
-            lastAdminMessagesCount = myAdminMessages.length;
-        }
+        initializeCustomerChatNotifications();
+        initializeAdminChatNotifications();
+        checkNewCustomerNotifications();
+        checkAdminNotifications();
     })();
 
 </script>
