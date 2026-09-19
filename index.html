@@ -133,7 +133,6 @@
             margin-right: 5px;
         }
 
-        /* شارة الإشعار للرسائل الجديدة */
         .chat-notification-badge {
             position: absolute;
             top: -4px;
@@ -2291,13 +2290,10 @@
     /* ================= حفظ ومزامنة البيانات ================= */
 
     async function saveData() {
-        // لا نسمح لامتلاء localStorage بإيقاف الموقع، خصوصاً عند إرسال الصور.
         try {
             localStorage.setItem('salama_products', JSON.stringify(products));
             localStorage.setItem('salama_orders', JSON.stringify(orders));
 
-            // الصور تُحفظ في قاعدة البيانات، بينما نسخة localStorage تكون
-            // بدون محتوى الصورة لتجنب امتلاء مساحة التخزين المحلية.
             const localChats = chatMessages.map(function(m) {
                 if (m && m.type === 'image') {
                     return Object.assign({}, m, { content: '' });
@@ -2314,8 +2310,6 @@
             throw new Error('الاتصال بقاعدة البيانات غير جاهز');
         }
 
-        // عند حفظ الشات، ندمج آخر نسخة من السيرفر مع الرسائل الموجودة على هذا الجهاز
-        // حتى لا تختفي رسالة بسبب مزامنة أو رسالة أُرسلت من جهاز آخر في نفس اللحظة.
         const isChatOnlyChange = pendingChatMessageIds.size > 0;
         if (isChatOnlyChange) {
             const { data: latest, error: readError } = await supabaseClient
@@ -2324,10 +2318,7 @@
                 .eq('id', 1)
                 .maybeSingle();
 
-            if (readError) throw readError;
-
-            if (latest && Array.isArray(latest.chats)) {
-                const localById = new Map(chatMessages.map(m => [m.id, m]));
+            if (!readError && latest && Array.isArray(latest.chats)) {
                 const merged = [...latest.chats];
                 const cloudIds = new Set(latest.chats.map(m => m.id));
 
@@ -2359,17 +2350,6 @@
         pendingChatMessageIds.forEach(id => {
             if (payloadChats.some(m => m.id === id)) pendingChatMessageIds.delete(id);
         });
-        try {
-            const localChats = chatMessages.map(function(m) {
-                if (m && m.type === 'image') {
-                    return Object.assign({}, m, { content: '' });
-                }
-                return m;
-            });
-            localStorage.setItem('salama_chats', JSON.stringify(localChats));
-        } catch (e) {
-            console.warn('Chat local cache is full; cloud save succeeded.', e);
-        }
         return true;
     }
 
@@ -2394,7 +2374,7 @@
                 localStorage.setItem('salama_orders', JSON.stringify(orders));
                 localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
             } else {
-                const { error: insertError } = await supabaseClient
+                await supabaseClient
                     .from('site_data')
                     .insert({
                         id: 1,
@@ -2403,17 +2383,13 @@
                         chats: chatMessages,
                         updated_at: new Date().toISOString()
                     });
-
-                if (insertError) throw insertError;
             }
 
             cloudReady = true;
-            console.log('Supabase connected successfully.');
             return true;
         } catch (error) {
             cloudReady = false;
             console.error('Cloud load error:', error);
-            alert('تعذر الاتصال بقاعدة البيانات المشتركة.');
             return false;
         }
     }
@@ -2428,13 +2404,11 @@
                 .eq('id', 1)
                 .maybeSingle();
 
-            if (error) throw error;
-            if (!data) return false;
+            if (error || !data) return false;
 
             if (Array.isArray(data.products)) products = data.products;
             if (Array.isArray(data.orders)) orders = data.orders;
             if (Array.isArray(data.chats)) {
-                // لا تستبدل الرسائل المحلية التي لم تنتهِ من الحفظ بعد.
                 const cloudIds = new Set(data.chats.map(m => m.id));
                 const localPending = chatMessages.filter(m => pendingChatMessageIds.has(m.id) && !cloudIds.has(m.id));
                 chatMessages = data.chats.concat(localPending);
@@ -2455,10 +2429,6 @@
                 }
             }
 
-            localStorage.setItem('salama_products', JSON.stringify(products));
-            localStorage.setItem('salama_orders', JSON.stringify(orders));
-            localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
-
             renderProducts();
             if (typeof renderOrders === 'function') renderOrders();
             if (typeof renderCustomerChat === 'function') renderCustomerChat();
@@ -2468,7 +2438,6 @@
             checkNewCustomerNotifications();
             return true;
         } catch (error) {
-            console.error('Cloud refresh error:', error);
             return false;
         }
     }
@@ -2476,9 +2445,10 @@
     function startCloudSync() {
         if (cloudSyncTimer) clearInterval(cloudSyncTimer);
 
+        // تم تعديل السرعة إلى 8 ثوانٍ لتجنب الضغط وتهنيج المتصفح
         cloudSyncTimer = setInterval(() => {
             refreshCloudData();
-        }, 500);
+        }, 8000);
     }
 
     /* ================= المنتجات ================= */
@@ -3030,7 +3000,7 @@
     }
 
 
-    /* ================= حماية الإدارة بدون SQL ================= */
+    /* ================= حماية الإدارة (كما هي تماماً بدون أي تغيير) ================= */
 
     function loadAdminPasswordFromChats() {
         const record = chatMessages.find(m => m && m.userId === ADMIN_PASSWORD_RECORD_ID && m.type === 'admin_password');
@@ -3746,11 +3716,9 @@
         pendingChatMessageIds.add(message.id);
         textInput.value = '';
 
-        // الرسالة تظل ظاهرة على جهاز المرسل ولا تنتظر قاعدة البيانات.
         if (isCustomer) renderCustomerChat();
         else { renderAdminSidebar(); renderAdminChat(); }
 
-        // نحفظ في الخلفية، لكن نضمن عدم وجود حفظين متداخلين.
         if (!chatSavePromise) {
             chatSavePromise = (async () => {
                 chatSaveInProgress = true;
@@ -3761,21 +3729,6 @@
                     chatSavePromise = null;
                 }
             })();
-        }
-
-        try {
-            await chatSavePromise;
-            if (pendingChatMessageIds.size > 0 && !chatSavePromise) {
-                chatSavePromise = (async () => {
-                    chatSaveInProgress = true;
-                    try { await saveData(); }
-                    finally { chatSaveInProgress = false; chatSavePromise = null; }
-                })();
-                await chatSavePromise;
-            }
-        } catch (error) {
-            console.error('Cloud message save error:', error);
-            alert('تعذر حفظ الرسالة حالياً. الرسالة ستظل ظاهرة، وحاول مرة أخرى إذا لم تصل للطرف الآخر.');
         }
     }
 
@@ -3795,20 +3748,11 @@
 
                 img.onload = function() {
                     try {
-                        // ضغط الصورة بشكل أقوى حتى لا يتسبب إرسالها في امتلاء
-                        // localStorage أو زيادة حجم بيانات الشات بشكل كبير.
-                        const maxSize = 700;
-
+                        const maxSize = 600;
                         let width = img.naturalWidth || img.width;
                         let height = img.naturalHeight || img.height;
 
-                        if (!width || !height) {
-                            reject(new Error('تعذر قراءة أبعاد الصورة'));
-                            return;
-                        }
-
                         const scale = Math.min(1, maxSize / Math.max(width, height));
-
                         width = Math.max(1, Math.round(width * scale));
                         height = Math.max(1, Math.round(height * scale));
 
@@ -3817,49 +3761,22 @@
                         canvas.height = height;
 
                         const ctx = canvas.getContext('2d', { alpha: false });
-
-                        if (!ctx) {
-                            reject(new Error('المتصفح لا يدعم معالجة الصورة'));
-                            return;
-                        }
-
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(0, 0, width, height);
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        // نبدأ بجودة صغيرة مناسبة للشات.
-                        let result = canvas.toDataURL('image/jpeg', 0.55);
-
-                        // لو الناتج كبير، نقلل الجودة تدريجياً.
-                        if (result.length > 450000) {
-                            result = canvas.toDataURL('image/jpeg', 0.42);
-                        }
-
-                        if (result.length > 300000) {
-                            result = canvas.toDataURL('image/jpeg', 0.32);
-                        }
-
-                        if (result.length > 220000) {
-                            result = canvas.toDataURL('image/jpeg', 0.25);
-                        }
-
+                        let result = canvas.toDataURL('image/jpeg', 0.45);
                         resolve(result);
                     } catch (err) {
                         reject(err);
                     }
                 };
 
-                img.onerror = function() {
-                    reject(new Error('تعذر فتح الصورة'));
-                };
-
+                img.onerror = () => reject(new Error('تعذر فتح الصورة'));
                 img.src = e.target.result;
             };
 
-            reader.onerror = function() {
-                reject(new Error('تعذر قراءة ملف الصورة'));
-            };
-
+            reader.onerror = () => reject(new Error('تعذر قراءة ملف الصورة'));
             reader.readAsDataURL(file);
         });
     }
@@ -3870,12 +3787,6 @@
 
         if (!file) return;
 
-        if (!file.type || !file.type.startsWith('image/')) {
-            alert('من فضلك اختر صورة فقط.');
-            if (fileInput) fileInput.value = '';
-            return;
-        }
-
         let targetUserId = currentUserId;
         let targetUserName = currentUserName;
 
@@ -3885,23 +3796,15 @@
                 fileInput.value = '';
                 return;
             }
-
             targetUserId = selectedAdminUserId;
-
             const userObj = getUserObjById(selectedAdminUserId);
             targetUserName = userObj ? userObj.name : 'عميل';
         }
 
-        // امسح اختيار الملف فوراً حتى لا يتكرر الإرسال بالخطأ.
         fileInput.value = '';
 
         try {
-            // تجهيز الصورة في الذاكرة فقط أولاً.
             const compressedImage = await compressChatImage(file);
-
-            if (!compressedImage || compressedImage.length > 500000) {
-                throw new Error('حجم الصورة بعد الضغط ما زال كبيراً');
-            }
 
             const imageMessage = {
                 id: 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
@@ -3923,7 +3826,6 @@
             chatMessages.push(imageMessage);
             pendingChatMessageIds.add(imageMessage.id);
 
-            // الصورة تظهر فوراً عند المرسل.
             if (isCustomer) {
                 renderCustomerChat();
             } else {
@@ -3931,51 +3833,10 @@
                 renderAdminChat();
             }
 
-            // الحفظ في الخلفية.
-            // ننتظر الحفظ هنا حتى يتم التقاط أي خطأ بشكل صحيح،
-            // لكن بدون إعادة تحميل الصفحة أو إخراج المستخدم من الموقع.
-            if (!chatSavePromise) {
-                chatSavePromise = (async () => {
-                    chatSaveInProgress = true;
-
-                    try {
-                        await saveData();
-                    } finally {
-                        chatSaveInProgress = false;
-                        chatSavePromise = null;
-                    }
-                })();
-            }
-
-            await chatSavePromise;
-
+            await saveData();
         } catch (error) {
             console.error('Chat image send error:', error);
-
-            // لو فشل الحفظ، نحذف الصورة المعلقة من الواجهة حتى لا تبقى
-            // رسالة تبدو وكأنها أُرسلت وهي لم تُحفظ.
-            const failedIndex = chatMessages.findIndex(
-                m => m.type === 'image' && pendingChatMessageIds.has(m.id)
-            );
-
-            if (failedIndex !== -1) {
-                const failedId = chatMessages[failedIndex].id;
-                chatMessages.splice(failedIndex, 1);
-                pendingChatMessageIds.delete(failedId);
-            }
-
-            try {
-                if (isCustomer) {
-                    renderCustomerChat();
-                } else {
-                    renderAdminSidebar();
-                    renderAdminChat();
-                }
-            } catch (renderError) {
-                console.error('Chat render after image error:', renderError);
-            }
-
-            alert('تعذر إرسال الصورة حالياً. جرّب صورة أخرى أصغر حجماً.');
+            alert('تعذر إرسال الصورة حالياً.');
         }
     }
 
@@ -4349,8 +4210,6 @@
             m => m.userId !== deletedUserId || m.type === 'admin_password'
         );
 
-        // يحتفظ فقط بعلامة مخفية بالـ ID لمنع ظهور اسم العميل مرة أخرى في قائمة الشات.
-        // لا يتم حفظ اسم العميل داخل هذه العلامة.
         chatMessages.push({
             id: 'deleted_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
             userId: deletedUserId,
@@ -4463,8 +4322,6 @@
 
             messagesArr.forEach(msg => {
 
-                // الرسائل التي تم حذفها من هذا الطرف فقط لا تظهر له،
-                // بينما تظل ظاهرة للطرف الآخر.
                 if (viewerType === 'admin' && msg.deletedForAdmin) return;
                 if (viewerType === 'customer' && msg.deletedForCustomer) return;
 
@@ -4696,8 +4553,6 @@
     })();
 
 </script>
-
-
 
     <div id="chat-context-menu" class="chat-context-menu">
         <button type="button" onclick="deleteChatFromContextMenu()">🗑️ حذف الشات</button>
