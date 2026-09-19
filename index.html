@@ -2057,12 +2057,6 @@
 
             <div class="admin-password-box">
 
-                <div class="admin-password-note">
-                    كلمة المرور مشتركة بين جميع الأجهزة لأنها محفوظة داخل بيانات الموقع الموجودة بالفعل.
-                    عند تغييرها من جهاز واحد، يتم تحديثها تلقائياً على باقي الأجهزة.
-                    <br>
-                    <strong>أول مرة تدخل فيها الإدارة سيطلب منك إنشاء كلمة المرور بنفسك.</strong>
-                </div>
 
                 <input type="password" id="admin-current-password" class="form-control" placeholder="كلمة المرور الحالية">
                 <input type="password" id="admin-new-password" class="form-control" placeholder="كلمة المرور الجديدة">
@@ -2314,7 +2308,7 @@
                 adminAuthenticated = false;
                 sessionStorage.removeItem('salama_admin_authenticated');
                 if (currentSection === 'admin') {
-                    alert('تم تغيير كلمة مرور الإدارة من جهاز آخر. يرجى الدخول بكلمة المرور الجديدة.');
+                    alert('تم تحديث كلمة مرور الإدارة. يرجى تسجيل الدخول.');
                     showSection('store');
                     return true;
                 }
@@ -3025,7 +3019,7 @@
             document.getElementById('admin-current-password').value = '';
             document.getElementById('admin-new-password').value = '';
             document.getElementById('admin-confirm-password').value = '';
-            alert('تم تغيير كلمة مرور الإدارة بنجاح، وستتحدث على جميع الأجهزة.');
+            alert('تم تغيير كلمة مرور الإدارة بنجاح.');
         } catch (error) {
             console.error('Admin password change error:', error);
             alert('تعذر تغيير كلمة المرور.');
