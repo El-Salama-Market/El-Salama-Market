@@ -2554,23 +2554,27 @@
 
     function getCustomerIncomingMessages() {
         if (!currentUserId) return [];
+        const cutoffs = getDeletedChatCutoffs();
         return chatMessages.filter(
             m => m &&
                  m.userId === currentUserId &&
                  m.sender === 'admin' &&
                  m.type !== 'admin_password' &&
-                 !m.deletedForCustomer
+                 !m.deletedForCustomer &&
+                 !isMessageHiddenByChatDeletion(m, cutoffs)
         );
     }
 
     function getAdminIncomingMessages(userId) {
         if (!userId) return [];
+        const cutoffs = getDeletedChatCutoffs();
         return chatMessages.filter(
             m => m &&
                  m.userId === userId &&
                  m.sender === 'customer' &&
                  m.type !== 'admin_password' &&
-                 !m.deletedForAdmin
+                 !m.deletedForAdmin &&
+                 !isMessageHiddenByChatDeletion(m, cutoffs)
         );
     }
 
@@ -2631,7 +2635,7 @@
 
         if (!badge) return;
 
-        if (unread.length > 0 && currentSection !== 'chat') {
+        if (unread.length > 0) {
             badge.innerText = unread.length > 99 ? '99+' : String(unread.length);
             badge.classList.remove('hidden');
 
@@ -2714,9 +2718,16 @@
         const map = getAdminSeenMap();
         let totalUnreadForAdmin = 0;
 
+        const adminNotificationCutoffs = getDeletedChatCutoffs();
         const userIds = [...new Set(
             chatMessages
-                .filter(m => m && m.sender === 'customer' && m.userId && m.type !== 'admin_password')
+                .filter(m =>
+                    m &&
+                    m.sender === 'customer' &&
+                    m.userId &&
+                    m.type !== 'admin_password' &&
+                    !isMessageHiddenByChatDeletion(m, adminNotificationCutoffs)
+                )
                 .map(m => m.userId)
         )];
 
@@ -2746,7 +2757,7 @@
         });
 
         if (tabBadge) {
-            if (currentSection === 'admin' && totalUnreadForAdmin > 0) {
+            if (totalUnreadForAdmin > 0) {
                 tabBadge.innerText = totalUnreadForAdmin > 99 ? '99+' : String(totalUnreadForAdmin);
                 tabBadge.classList.remove('hidden');
             } else {
@@ -2757,7 +2768,6 @@
 
         if (
             adminAuthenticated &&
-            currentSection === 'admin' &&
             totalUnreadForAdmin > lastUnreadAdminCount
         ) {
             playNotificationSound();
@@ -4237,6 +4247,7 @@
             sender: sender,
             type: 'text',
             content: text,
+            timestamp: Date.now(),
             time: new Date().toLocaleTimeString('ar-EG', {
                 hour: '2-digit',
                 minute: '2-digit'
@@ -4407,6 +4418,7 @@
                 sender: sender,
                 type: 'image',
                 content: compressedImage,
+                timestamp: Date.now(),
                 time: new Date().toLocaleTimeString('ar-EG', {
                     hour: '2-digit',
                     minute: '2-digit'
@@ -4431,6 +4443,16 @@
             // تنظيف حقل الصورة بعد أن أصبحت الرسالة داخل الشات.
             cancelChatImagePreview(sender);
 
+            // إعادة التركيز على خانة الكتابة فوراً بعد إرسال الصورة،
+            // حتى يقدر العميل/الإدارة يكتب رسالة جديدة مباشرة مثل واتساب.
+            const nextTextInput = document.getElementById(
+                isCustomer ? 'chat-input-text' : 'admin-chat-input-text'
+            );
+            if (nextTextInput) {
+                nextTextInput.disabled = false;
+                nextTextInput.focus();
+            }
+
             // الحفظ في الخلفية؛ لا ننتظر الشبكة ولا نعيد تحميل الصفحة.
             queueChatSave();
 
@@ -4453,9 +4475,13 @@
                 'chat-messages-list'
             );
 
+        const renderCutoffs = getDeletedChatCutoffs();
         const myMessages =
             chatMessages.filter(
-                m => m.userId === currentUserId && m.type !== 'admin_password'
+                m =>
+                    m.userId === currentUserId &&
+                    m.type !== 'admin_password' &&
+                    !isMessageHiddenByChatDeletion(m, renderCutoffs)
             );
 
         renderMessagesHTML(
@@ -4468,17 +4494,56 @@
 
     /* ================= بيانات المستخدم ================= */
 
+    // علامة الحذف تخص الرسائل الموجودة قبل وقت الحذف فقط.
+    // إذا عاد نفس العميل وأرسل رسالة جديدة بعد الحذف، يبدأ الشات من جديد بشكل طبيعي.
+    function getDeletedChatCutoffs() {
+        const cutoffs = {};
+        chatMessages.forEach(function (m) {
+            if (m && m.type === 'deleted_user' && m.userId) {
+                const stamp = Number(m.deletedAt || m.timestamp || 0);
+                if (!cutoffs[m.userId] || stamp > cutoffs[m.userId]) {
+                    cutoffs[m.userId] = stamp;
+                }
+            }
+        });
+        return cutoffs;
+    }
+
+    function isMessageHiddenByChatDeletion(msg, cutoffs) {
+        if (!msg || !msg.userId) return false;
+        if (msg.type === 'deleted_user') return true;
+
+        const cutoff = cutoffs && cutoffs[msg.userId];
+        if (!cutoff) return false;
+
+        const stamp = Number(msg.timestamp || msg.createdAt || 0);
+        return stamp > 0 && stamp <= cutoff;
+    }
+
+    function hasActiveChatAfterDeletion(userId) {
+        if (!userId) return false;
+        const cutoffs = getDeletedChatCutoffs();
+        const cutoff = cutoffs[userId] || 0;
+        return chatMessages.some(function (m) {
+            if (!m || m.userId !== userId || m.type === 'deleted_user') return false;
+            if (m.type === 'admin_password') return false;
+            const stamp = Number(m.timestamp || m.createdAt || 0);
+            return !cutoff || stamp > cutoff;
+        });
+    }
+
     function getUserObjById(uid) {
 
-        const isDeleted = chatMessages.some(
-            m => m.userId === uid && m.type === 'deleted_user'
-        );
-
-        if (isDeleted) return null;
+        const cutoffs = getDeletedChatCutoffs();
+        const cutoff = cutoffs[uid] || 0;
 
         const msg =
             chatMessages.find(
-                m => m.userId === uid && m.type !== 'deleted_user'
+                m =>
+                    m.userId === uid &&
+                    m.type !== 'deleted_user' &&
+                    m.type !== 'admin_password' &&
+                    (!cutoff || Number(m.timestamp || m.createdAt || 0) > cutoff)
             );
 
         if (msg) {
@@ -4528,16 +4593,12 @@
         sidebar.innerHTML = '';
 
         const usersMap = {};
-        const deletedChatUsers = new Set(
-            chatMessages
-                .filter(msg => msg.type === 'deleted_user' && msg.userId)
-                .map(msg => msg.userId)
-        );
+        const deletedChatCutoffs = getDeletedChatCutoffs();
 
         chatMessages.forEach(msg => {
 
             if (msg.type === 'admin_password' || msg.type === 'deleted_user') return;
-            if (msg.userId && deletedChatUsers.has(msg.userId)) return;
+            if (isMessageHiddenByChatDeletion(msg, deletedChatCutoffs)) return;
 
             if (msg.userId) {
 
@@ -4564,7 +4625,7 @@
 
             if (
                 ord.userId &&
-                !deletedChatUsers.has(ord.userId) &&
+                (!deletedChatCutoffs[ord.userId] || hasActiveChatAfterDeletion(ord.userId)) &&
                 !usersMap[ord.userId]
             ) {
 
@@ -4621,8 +4682,10 @@
 
         // حساب عدد الرسائل غير المقروءة لكل مستخدم لعرضها بجانب اسمه في القائمة
         let unreadCounts = {};
+        const unreadCutoffs = getDeletedChatCutoffs();
         chatMessages.forEach(m => {
             if (m.type === 'admin_password' || m.type === 'deleted_user' || !m.userId) return;
+            if (isMessageHiddenByChatDeletion(m, unreadCutoffs)) return;
             if (m.sender === 'customer') {
                 if (selectedAdminUserId !== m.userId || currentSection !== 'admin') {
                     unreadCounts[m.userId] = (unreadCounts[m.userId] || 0) + 1;
@@ -4840,6 +4903,8 @@
             userId: deletedUserId,
             type: 'deleted_user',
             sender: 'system',
+            deletedAt: Date.now(),
+            timestamp: Date.now(),
             time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
         });
 
@@ -4897,12 +4962,13 @@
             return;
         }
 
+        const renderCutoffs = getDeletedChatCutoffs();
         const specificMessages =
             chatMessages.filter(
                 m =>
-                    m.userId ===
-                    selectedAdminUserId &&
-                    m.type !== 'admin_password'
+                    m.userId === selectedAdminUserId &&
+                    m.type !== 'admin_password' &&
+                    !isMessageHiddenByChatDeletion(m, renderCutoffs)
             );
 
         renderMessagesHTML(
