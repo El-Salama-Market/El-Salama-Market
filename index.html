@@ -306,11 +306,14 @@
 
         .product-img {
             width: 100%;
-            height: 130px;
+            height: 180px;
             object-fit: contain;
-            border-radius: 8px;
+            object-position: center;
+            border-radius: 10px;
             margin-bottom: 12px;
-            background: #fdfdfd;
+            background: #fff;
+            padding: 4px;
+            display: block;
         }
 
         .product-title {
@@ -1204,8 +1207,9 @@
             }
 
             .product-img {
-                height: 95px;
+                height: 155px;
                 margin-bottom: 8px;
+                padding: 3px;
             }
 
             .product-category {
@@ -1460,7 +1464,8 @@
             }
 
             .product-img {
-                height: 85px;
+                height: 135px;
+                padding: 2px;
             }
 
             .product-title {
@@ -2739,7 +2744,7 @@
     const SUPABASE_ANON_KEY =
         'sb_publishable_MFLrSShNnVjQi2ZqzYNefw_xZBy82_1';
 
-    // Bucket صور المنتجات داخل Supabase Storage.
+    // تم ضبط اسم الـ Bucket هنا ليكون مطابقاً تماماً لما طلبته: Product Images -> product-images
     const PRODUCT_IMAGES_BUCKET = 'product-images';
 
     const supabaseClient =
@@ -2766,8 +2771,6 @@
     let adminAuthenticated = sessionStorage.getItem('salama_admin_authenticated') === 'true';
 
     // المنتجات الأساسية المضافة من قائمة السلامة ماركت.
-    // الأسعار غير مذكورة في القائمة المرسلة، لذلك لا نخترع أسعاراً.
-    // المنتج الذي لا يملك سعراً يظهر "السعر غير محدد" ويكون زر الإضافة غير قابل للضغط.
     const BUILT_IN_PRODUCTS = [
         { id: 10001, name: 'عسل أسود البوادي', size: 'صغير', category: 'food-products', subcategory: 'عسل', price: null, img: 'https://via.placeholder.com/150?text=عسل' },
         { id: 10002, name: 'عسل أسود البوادي', size: 'كبير', category: 'food-products', subcategory: 'عسل', price: null, img: 'https://via.placeholder.com/150?text=عسل' },
@@ -2875,8 +2878,6 @@
     let notificationAudioContext = null;
     let notificationAudioUnlocked = false;
 
-    // فتح الصوت بعد أول تفاعل من المستخدم حتى يعمل على الهاتف والكمبيوتر
-    // بدون أن يمنعه المتصفح بسبب سياسة التشغيل التلقائي.
     function unlockNotificationAudio() {
         try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -2933,7 +2934,6 @@
         }
     }
 
-    // الصوت يحتاج تفاعل واحد من المستخدم في كل متصفح/جهاز.
     document.addEventListener('click', unlockNotificationAudio, { passive: true });
     document.addEventListener('touchstart', unlockNotificationAudio, { passive: true });
     document.addEventListener('keydown', unlockNotificationAudio, { passive: true });
@@ -2969,7 +2969,6 @@
 
         const lastSeenId = localStorage.getItem(storageKey);
 
-        // الطريقة الأساسية: آخر رسالة مقروءة.
         if (lastSeenId) {
             const index = messages.findIndex(m => m && m.id === lastSeenId);
             if (index >= 0) {
@@ -2977,14 +2976,11 @@
             }
         }
 
-        // حماية من مشكلة حذف/تغيير الرسالة المقروءة:
-        // نعتمد على وقت آخر قراءة بدل اختفاء التنبيه نهائياً.
         const seenTime = Number(localStorage.getItem(storageKey + '_ts') || 0);
         if (seenTime > 0) {
             return messages.filter(m => Number(m.timestamp || m.createdAt || 0) > seenTime);
         }
 
-        // لا توجد حالة قراءة محفوظة = لا نعتبر الرسائل القديمة جديدة.
         return [];
     }
 
@@ -3100,7 +3096,6 @@
         const map = getAdminSeenMap();
         const timeMap = getAdminSeenTimeMap();
         let changed = false;
-        let timeChanged = false;
 
         const userIds = [...new Set(
             chatMessages
@@ -3108,7 +3103,6 @@
                 .map(m => m.userId)
         )];
 
-        // أول تشغيل: اعتبر الموجود قديماً مقروءاً، حتى لا تظهر علامات حمراء وهمية.
         userIds.forEach(userId => {
             if (!map[userId]) {
                 const messages = getAdminIncomingMessages(userId);
@@ -3124,7 +3118,6 @@
         checkAdminNotifications();
     }
 
-    // إشعار الإدارة: علامة حمراء واحدة فقط داخل تبويب "محادثات العملاء".
     function checkAdminNotifications() {
         const tabBadge = document.getElementById('admin-chat-tab-badge');
 
@@ -3265,7 +3258,6 @@
         return true;
     }
 
-    // طابور حفظ الرسائل يمنع ضياع الرسائل عند إرسال أكثر من رسالة/صورة بسرعة.
     function queueChatSave() {
         chatSaveQueued = true;
 
@@ -3284,8 +3276,6 @@
                         await saveData();
                     } catch (error) {
                         console.error('Chat save error:', error);
-
-                        // نحتفظ بالرسائل في الذاكرة والمحلي حتى تعود قاعدة البيانات.
                         try {
                             localStorage.setItem(
                                 'salama_chats',
@@ -3296,8 +3286,6 @@
                                 }))
                             );
                         } catch (e) {}
-
-                        // لا نوقف الشات بسبب فشل حفظ مؤقت.
                         break;
                     }
                 }
@@ -3354,8 +3342,6 @@
 
     async function refreshCloudData() {
         if (!cloudReady) return false;
-
-        // لا نسمح للمزامنة الدورية أن تستبدل رسالة/صورة ما زالت قيد الحفظ.
         if (chatSaveInProgress || pendingChatMessageIds.size > 0) return false;
 
         try {
@@ -3412,7 +3398,6 @@
             refreshCloudData();
         }, 5000);
 
-        // فحص خفيف للتنبيهات حتى تظهر العلامة والصوت بسلاسة دون انتظار دورة المزامنة كاملة.
         if (window.chatNotificationTimer) clearInterval(window.chatNotificationTimer);
         window.chatNotificationTimer = setInterval(() => {
             try {
@@ -3422,7 +3407,6 @@
         }, 1500);
     }
 
-    // فتح تفاصيل المنتج أيضاً من لوحة المفاتيح بدون تغيير سلوك باقي الموقع.
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
             closeProductDetails();
@@ -3468,8 +3452,6 @@
             return;
         }
 
-        // استخدام join مرة واحدة بدلاً من innerHTML += داخل الحلقة
-        // لتقليل إعادة رسم الصفحة عند وجود عدد كبير من المنتجات.
         list.innerHTML = items.map(p => {
 
             const hasPrice =
@@ -3552,7 +3534,6 @@
             `;
         }).join('');
     }
-
 
     /* ================= تفاصيل المنتج والاختيارات ================= */
 
@@ -3831,9 +3812,7 @@
         document.body.style.overflow = '';
     }
 
-
     function getCategoryName(cat) {
-
         const categoryNames = {
             'food-products': 'منتجات غذائية',
             'chips-snacks': 'شيبسي وسناكس',
@@ -3852,61 +3831,34 @@
             'baby-supplies': 'مستلزمات أطفال',
             'household-tools': 'أدوات منزلية'
         };
-
         return categoryNames[cat] || 'غير مصنف';
     }
 
-
     function filterCategory(cat, btn) {
-
-        document
-            .querySelectorAll('.cat-chip')
-            .forEach(
-                b => b.classList.remove('active')
-            );
-
+        document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
         currentCategory = cat;
-
         renderProducts();
     }
 
-
     function filterProducts() {
-
-        const query =
-            document
-                .getElementById('search-input')
-                .value
-                .toLowerCase();
-
-        const filtered =
-            products.filter(p => {
-                const searchable = [
-                    p.name,
-                    p.subcategory,
-                    p.size,
-                    getCategoryName(p.category)
-                ]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
-
-                return searchable.includes(query);
-            });
-
+        const query = document.getElementById('search-input').value.toLowerCase();
+        const filtered = products.filter(p => {
+            const searchable = [
+                p.name,
+                p.subcategory,
+                p.size,
+                getCategoryName(p.category)
+            ].filter(Boolean).join(' ').toLowerCase();
+            return searchable.includes(query);
+        });
         renderProducts(filtered);
     }
-
 
     /* ================= السلة ================= */
 
     function addToCart(id, event, customPrice = null, customLabel = '') {
-
-        const prod =
-            products.find(p => p.id === id);
-
+        const prod = products.find(p => p.id === id);
         if (!prod) return;
 
         const finalPrice =
@@ -3925,147 +3877,65 @@
             cartLabel: customLabel || ''
         });
 
-        const imgElement =
-            document.getElementById(
-                `prod-img-${id}`
-            );
-
-        const cartBtn =
-            document.getElementById(
-                'cart-nav-btn'
-            );
+        const imgElement = document.getElementById(`prod-img-${id}`);
+        const cartBtn = document.getElementById('cart-nav-btn');
 
         if (imgElement && cartBtn) {
+            const imgRect = imgElement.getBoundingClientRect();
+            const cartRect = cartBtn.getBoundingClientRect();
 
-            const imgRect =
-                imgElement.getBoundingClientRect();
-
-            const cartRect =
-                cartBtn.getBoundingClientRect();
-
-            const flyingImg =
-                document.createElement('img');
-
-            flyingImg.src =
-                imgElement.src;
-
-            flyingImg.classList.add(
-                'flying-img'
-            );
-
-            flyingImg.style.left =
-                `${imgRect.left}px`;
-
-            flyingImg.style.top =
-                `${imgRect.top}px`;
-
-            document.body.appendChild(
-                flyingImg
-            );
+            const flyingImg = document.createElement('img');
+            flyingImg.src = imgElement.src;
+            flyingImg.classList.add('flying-img');
+            flyingImg.style.left = `${imgRect.left}px`;
+            flyingImg.style.top = `${imgRect.top}px`;
+            document.body.appendChild(flyingImg);
 
             setTimeout(() => {
-
-                flyingImg.style.left =
-                    `${cartRect.left + 10}px`;
-
-                flyingImg.style.top =
-                    `${cartRect.top + 10}px`;
-
-                flyingImg.style.width =
-                    '20px';
-
-                flyingImg.style.height =
-                    '20px';
-
-                flyingImg.style.opacity =
-                    '0.4';
-
+                flyingImg.style.left = `${cartRect.left + 10}px`;
+                flyingImg.style.top = `${cartRect.top + 10}px`;
+                flyingImg.style.width = '20px';
+                flyingImg.style.height = '20px';
+                flyingImg.style.opacity = '0.4';
             }, 10);
 
             setTimeout(() => {
-
                 flyingImg.remove();
-
-                document.getElementById(
-                    'cart-count'
-                ).innerText =
-                    cart.length;
-
+                document.getElementById('cart-count').innerText = cart.length;
             }, 500);
-
         } else {
-
-            document.getElementById(
-                'cart-count'
-            ).innerText =
-                cart.length;
+            document.getElementById('cart-count').innerText = cart.length;
         }
     }
-
 
     function showSection(section) {
         currentSection = section;
 
-        document
-            .getElementById('store-section')
-            .classList.add('hidden');
+        document.getElementById('store-section').classList.add('hidden');
+        document.getElementById('cart-section').classList.add('hidden');
+        document.getElementById('chat-section').classList.add('hidden');
+        document.getElementById('admin-section').classList.add('hidden');
 
-        document
-            .getElementById('cart-section')
-            .classList.add('hidden');
-
-        document
-            .getElementById('chat-section')
-            .classList.add('hidden');
-
-        document
-            .getElementById('admin-section')
-            .classList.add('hidden');
-
-        const hero =
-            document.getElementById('hero-area');
+        const hero = document.getElementById('hero-area');
 
         if (section === 'store') {
-
-            document
-                .getElementById('store-section')
-                .classList.remove('hidden');
-
+            document.getElementById('store-section').classList.remove('hidden');
             hero.style.display = 'block';
-
             renderProducts();
-
         } else {
-
             hero.style.display = 'none';
 
             if (section === 'cart') {
-
-                document
-                    .getElementById('cart-section')
-                    .classList.remove('hidden');
-
+                document.getElementById('cart-section').classList.remove('hidden');
                 if (currentUserName) {
-
-                    document.getElementById(
-                        'cust-name'
-                    ).value =
-                        currentUserName;
+                    document.getElementById('cust-name').value = currentUserName;
                 }
-
                 renderCart();
-
             } else if (section === 'chat') {
-
-                document
-                    .getElementById('chat-section')
-                    .classList.remove('hidden');
-
+                document.getElementById('chat-section').classList.remove('hidden');
                 markCustomerChatAsSeen();
                 checkCustomerChatLogin();
-
             } else if (section === 'admin') {
-
                 if (!cloudReady) {
                     alert('الموقع غير متصل بقاعدة البيانات المشتركة.');
                     showSection('store');
@@ -4077,10 +3947,7 @@
                     return;
                 }
 
-                document
-                    .getElementById('admin-section')
-                    .classList.remove('hidden');
-
+                document.getElementById('admin-section').classList.remove('hidden');
                 renderOrders();
                 renderAdminProducts();
                 renderAdminSidebar();
@@ -4093,241 +3960,103 @@
         }
     }
 
-
     function renderCart() {
-
-        const tbody =
-            document.getElementById(
-                'cart-items'
-            );
-
+        const tbody = document.getElementById('cart-items');
         tbody.innerHTML = '';
 
         let subtotal = 0;
-
         cart.forEach((item, index) => {
-
             subtotal += item.price;
-
             tbody.innerHTML += `
-
                 <tr>
-
                     <td>
-                        <strong>
-                            ${item.name}
-                        </strong>
+                        <strong>${item.name}</strong>
                         ${item.cartLabel ? `<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">${item.cartLabel}</div>` : ''}
                     </td>
-
+                    <td>${item.price} ج.م</td>
                     <td>
-                        ${item.price} ج.م
-                    </td>
-
-                    <td>
-
                         <button
                             onclick="removeFromCart(${index})"
-                            style="
-                                color:var(--primary);
-                                border:none;
-                                background:none;
-                                cursor:pointer;
-                                font-weight:bold;
-                            "
+                            style="color:var(--primary);border:none;background:none;cursor:pointer;font-weight:bold;"
                         >
                             إلغاء
                         </button>
-
                     </td>
-
                 </tr>
-
             `;
         });
 
-        const delivery =
-            (
-                subtotal > 0 &&
-                subtotal < 100
-            )
-                ? 5
-                : 0;
+        const delivery = (subtotal > 0 && subtotal < 100) ? 5 : 0;
+        const total = subtotal + delivery;
 
-        const total =
-            subtotal + delivery;
-
-        document.getElementById(
-            'subtotal-price'
-        ).innerText = subtotal;
-
-        document.getElementById(
-            'delivery-fee'
-        ).innerText = delivery;
-
-        document.getElementById(
-            'total-price'
-        ).innerText = total;
+        document.getElementById('subtotal-price').innerText = subtotal;
+        document.getElementById('delivery-fee').innerText = delivery;
+        document.getElementById('total-price').innerText = total;
     }
 
-
     function removeFromCart(index) {
-
         cart.splice(index, 1);
-
-        document.getElementById(
-            'cart-count'
-        ).innerText =
-            cart.length;
-
+        document.getElementById('cart-count').innerText = cart.length;
         renderCart();
     }
 
-
     function togglePaymentInfo() {
-
-        const method =
-            document.getElementById(
-                'payment-method'
-            ).value;
-
-        document.getElementById(
-            'instapay-info'
-        ).style.display =
-            method === 'instapay'
-                ? 'block'
-                : 'none';
+        const method = document.getElementById('payment-method').value;
+        document.getElementById('instapay-info').style.display = method === 'instapay' ? 'block' : 'none';
     }
-
 
     /* ================= الطلبات ================= */
 
     async function submitOrder() {
-
-        const name =
-            document.getElementById(
-                'cust-name'
-            ).value;
-
-        const address =
-            document.getElementById(
-                'cust-address'
-            ).value;
-
-        const payment =
-            document.getElementById(
-                'payment-method'
-            ).value;
+        const name = document.getElementById('cust-name').value;
+        const address = document.getElementById('cust-address').value;
+        const payment = document.getElementById('payment-method').value;
 
         if (!name || !address) {
-
-            alert(
-                'برجاء إدخال الاسم والعنوان ورقم الهاتف!'
-            );
-
+            alert('برجاء إدخال الاسم والعنوان ورقم الهاتف!');
             return;
         }
 
         if (cart.length === 0) {
-
             alert('السلة فارغة!');
-
             return;
         }
 
         if (!currentUserId || !currentUserName) {
-
-            currentUserId =
-                'user_' +
-                Math.random()
-                    .toString(36)
-                    .substr(2, 9);
-
-            currentUserName =
-                name;
-
-            localStorage.setItem(
-                'salama_user_id',
-                currentUserId
-            );
-
-            localStorage.setItem(
-                'salama_user_name',
-                currentUserName
-            );
+            currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+            currentUserName = name;
+            localStorage.setItem('salama_user_id', currentUserId);
+            localStorage.setItem('salama_user_name', currentUserName);
         }
 
-        const subtotal =
-            cart.reduce(
-                (sum, item) =>
-                    sum + item.price,
-                0
-            );
-
-        const delivery =
-            subtotal < 100
-                ? 5
-                : 0;
-
-        const total =
-            subtotal + delivery;
-
-        const orderDetails =
-            cart
-                .map(i => i.name)
-                .join(' ، ');
+        const subtotal = cart.reduce((sum, item) => sum + item.price, 0);
+        const delivery = subtotal < 100 ? 5 : 0;
+        const total = subtotal + delivery;
+        const orderDetails = cart.map(i => i.name).join(' ، ');
 
         orders.push({
-
-            id:
-                orders.length + 101,
-
-            userId:
-                currentUserId,
-
-            customer:
-                name,
-
-            address:
-                address,
-
-            details:
-                orderDetails,
-
-            payment:
-                payment === 'cash'
-                    ? 'كاش'
-                    : 'إنستا باي',
-
-            total:
-                total
+            id: orders.length + 101,
+            userId: currentUserId,
+            customer: name,
+            address: address,
+            details: orderDetails,
+            payment: payment === 'cash' ? 'كاش' : 'إنستا باي',
+            total: total
         });
 
         try {
             await saveData();
-
             cart = [];
-
-            document.getElementById(
-                'cart-count'
-            ).innerText = 0;
-
-            document.getElementById(
-                'cust-address'
-            ).value = '';
-
-            alert(
-                'تم إرسال طلبك بنجاح! وسوف يتصل بك المندوب فوراً.'
-            );
-
+            document.getElementById('cart-count').innerText = 0;
+            document.getElementById('cust-address').value = '';
+            alert('تم إرسال طلبك بنجاح! وسوف يتصل بك المندوب فوراً.');
             showSection('store');
         } catch (error) {
             alert('حدث خطأ أثناء إرسال الطلب، تأكد من الاتصال بالإنترنت.');
         }
     }
 
-
-    /* ================= حماية الإدارة (كما هي تماماً بدون أي تغيير) ================= */
+    /* ================= حماية الإدارة ================= */
 
     function loadAdminPasswordFromChats() {
         const record = chatMessages.find(m => m && m.userId === ADMIN_PASSWORD_RECORD_ID && m.type === 'admin_password');
@@ -4473,288 +4202,100 @@
     /* ================= الإدارة ================= */
 
     function switchAdminTab(tabId, btn) {
-
-        document
-            .querySelectorAll('.admin-tab-btn')
-            .forEach(
-                b => b.classList.remove('active')
-            );
-
-        document
-            .querySelectorAll('.admin-tab-content')
-            .forEach(
-                c => c.classList.remove('active')
-            );
-
+        document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
-
-        document
-            .getElementById(tabId)
-            .classList.add('active');
+        document.getElementById(tabId).classList.add('active');
     }
 
-
     function renderOrders() {
-
-        const tbody =
-            document.getElementById(
-                'orders-list'
-            );
-
+        const tbody = document.getElementById('orders-list');
         tbody.innerHTML = '';
 
         if (orders.length === 0) {
-
             tbody.innerHTML = `
-
                 <tr>
-
-                    <td
-                        colspan="7"
-                        style="
-                            text-align:center;
-                            color:var(--text-muted);
-                        "
-                    >
+                    <td colspan="7" style="text-align:center;color:var(--text-muted);">
                         لا توجد طلبات حالية
                     </td>
-
                 </tr>
-
             `;
-
             return;
         }
 
         orders.forEach((o, index) => {
-
-            const uId =
-                o.userId ||
-                'user_unknown';
-
+            const uId = o.userId || 'user_unknown';
             tbody.innerHTML += `
-
                 <tr>
-
+                    <td>#${o.id}</td>
+                    <td><strong>${o.customer}</strong></td>
+                    <td>${o.address}</td>
+                    <td>${o.details}</td>
+                    <td>${o.payment}</td>
+                    <td><strong style="color:var(--primary)">${o.total} ج.م</strong></td>
                     <td>
-                        #${o.id}
+                        <button class="btn-contact-order" onclick="contactCustomerFromOrder('${uId}', '${o.customer}')">تواصل 💬</button>
+                        <button class="btn-delete-order" onclick="deleteOrder(${index})">إلغاء الطلب</button>
                     </td>
-
-                    <td>
-                        <strong>
-                            ${o.customer}
-                        </strong>
-                    </td>
-
-                    <td>
-                        ${o.address}
-                    </td>
-
-                    <td>
-                        ${o.details}
-                    </td>
-
-                    <td>
-                        ${o.payment}
-                    </td>
-
-                    <td>
-                        <strong
-                            style="
-                                color:var(--primary)
-                            "
-                        >
-                            ${o.total} ج.م
-                        </strong>
-                    </td>
-
-                    <td>
-
-                        <button
-                            class="btn-contact-order"
-                            onclick="
-                                contactCustomerFromOrder(
-                                    '${uId}',
-                                    '${o.customer}'
-                                )
-                            "
-                        >
-                            تواصل 💬
-                        </button>
-
-                        <button
-                            class="btn-delete-order"
-                            onclick="deleteOrder(${index})"
-                        >
-                            إلغاء الطلب
-                        </button>
-
-                    </td>
-
                 </tr>
-
             `;
         });
     }
 
-
-    async function contactCustomerFromOrder(
-        userId,
-        userName
-    ) {
-
-        const hasChat =
-            chatMessages.some(
-                m => m.userId === userId
-            );
+    async function contactCustomerFromOrder(userId, userName) {
+        const hasChat = chatMessages.some(m => m.userId === userId);
 
         if (!hasChat) {
-
             chatMessages.push({
-
-                userId:
-                    userId,
-
-                userName:
-                    userName,
-
-                sender:
-                    'admin',
-
-                type:
-                    'text',
-
-                content:
-                    `مرحباً ${userName}، نقوم حالياً بتجهيز طلبك من سوبرماركت السلامة 🛒`,
-
-                time:
-                    new Date().toLocaleTimeString(
-                        'ar-EG',
-                        {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }
-                    )
+                userId: userId,
+                userName: userName,
+                sender: 'admin',
+                type: 'text',
+                content: `مرحباً ${userName}، نقوم حالياً بتجهيز طلبك من سوبرماركت السلامة 🛒`,
+                time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
             });
-
             await saveData();
         }
 
-        const chatTabBtn =
-            document.getElementById(
-                'btn-tab-chat'
-            );
-
-        switchAdminTab(
-            'admin-tab-chat',
-            chatTabBtn
-        );
-
-        selectAdminUser(
-            userId,
-            userName
-        );
+        const chatTabBtn = document.getElementById('btn-tab-chat');
+        switchAdminTab('admin-tab-chat', chatTabBtn);
+        selectAdminUser(userId, userName);
     }
 
-
     async function deleteOrder(index) {
-
-        if (
-            confirm(
-                'هل أنت تأكد من إلغاء وحذف هذا الطلب؟'
-            )
-        ) {
-
+        if (confirm('هل أنت تأكد من إلغاء وحذف هذا الطلب؟')) {
             orders.splice(index, 1);
-
             await saveData();
-
             renderOrders();
         }
     }
 
-
     /* ================= إدارة المنتجات ================= */
 
     function renderAdminProducts() {
-
-        const tbody =
-            document.getElementById(
-                'admin-products-list'
-            );
-
+        const tbody = document.getElementById('admin-products-list');
         tbody.innerHTML = '';
 
         products.forEach(p => {
-
             tbody.innerHTML += `
-
                 <tr>
-
                     <td>
-
-                        <img
-                            src="${p.img || 'https://via.placeholder.com/50'}"
-                            style="
-                                width:40px;
-                                height:40px;
-                                object-fit:cover;
-                                border-radius:4px;
-                            "
-                        >
-
+                        <img src="${p.img || 'https://via.placeholder.com/50'}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">
                     </td>
-
                     <td>
                         <strong>${p.name}</strong>
                         ${p.subcategory ? `<div style="font-size:11px;color:var(--text-muted);">${p.subcategory}${p.size ? ` • ${p.size}` : ''}</div>` : (p.size ? `<div style="font-size:11px;color:var(--text-muted);">${p.size}</div>` : '')}
                     </td>
-
+                    <td>${getCategoryName(p.category)}</td>
+                    <td>${p.price} ج.م</td>
                     <td>
-                        ${getCategoryName(p.category)}
+                        <button onclick="editProduct(${p.id})" style="color:blue;border:none;background:none;cursor:pointer;margin-left:10px;font-weight:bold;">تعديل</button>
+                        <button onclick="deleteProduct(${p.id})" style="color:red;border:none;background:none;cursor:pointer;font-weight:bold;">حذف</button>
                     </td>
-
-                    <td>
-                        ${p.price} ج.م
-                    </td>
-
-                    <td>
-
-                        <button
-                            onclick="editProduct(${p.id})"
-                            style="
-                                color:blue;
-                                border:none;
-                                background:none;
-                                cursor:pointer;
-                                margin-left:10px;
-                                font-weight:bold;
-                            "
-                        >
-                            تعديل
-                        </button>
-
-                        <button
-                            onclick="deleteProduct(${p.id})"
-                            style="
-                                color:red;
-                                border:none;
-                                background:none;
-                                cursor:pointer;
-                                font-weight:bold;
-                            "
-                        >
-                            حذف
-                        </button>
-
-                    </td>
-
                 </tr>
-
             `;
         });
     }
-
 
     /* ================= صور المنتجات ================= */
 
@@ -4808,19 +4349,30 @@
 
         if (uploadError) {
             console.error('Product image upload error:', uploadError);
-            throw uploadError;
+
+            const storageError = new Error(
+                uploadError.message ||
+                uploadError.error_description ||
+                'فشل رفع الصورة إلى Supabase Storage.'
+            );
+            storageError.name = uploadError.name || 'StorageUploadError';
+            storageError.statusCode = uploadError.statusCode || uploadError.status || '';
+            storageError.originalError = uploadError;
+            throw storageError;
         }
 
         const { data } = supabaseClient.storage
             .from(PRODUCT_IMAGES_BUCKET)
             .getPublicUrl(filePath);
 
-        if (!data || !data.publicUrl) throw new Error('تعذر الحصول على رابط الصورة بعد رفعها.');
+        if (!data || !data.publicUrl) {
+            throw new Error('تعذر الحصول على رابط الصورة بعد رفعها.');
+        }
+
         return data.publicUrl;
     }
 
     async function saveProduct() {
-
         if (!cloudReady) {
             alert('الموقع غير متصل بقاعدة البيانات. لا يمكن إضافة المنتج الآن.');
             return;
@@ -4894,10 +4446,37 @@
             if (id) await refreshCloudData();
 
             const message = String(error && error.message ? error.message : error);
-            if (message.toLowerCase().includes('bucket') || message.toLowerCase().includes('not found')) {
-                alert('تعذر رفع الصورة لأن Bucket الصور غير موجود. أنشئ Bucket باسم product-images في Supabase Storage واجعله Public ثم جرّب مرة أخرى.');
+            const lowerMessage = message.toLowerCase();
+
+            if (
+                lowerMessage.includes('bucket') &&
+                (lowerMessage.includes('not found') || lowerMessage.includes('does not exist'))
+            ) {
+                alert(
+                    'تعذر رفع الصورة لأن Bucket باسم product-images غير موجود.\n\n' +
+                    'تأكد أن الاسم مكتوب بالضبط: product-images\n' +
+                    'وتأكد أن الـ Bucket معمول Public.'
+                );
+            } else if (
+                lowerMessage.includes('row-level security') ||
+                lowerMessage.includes('permission') ||
+                lowerMessage.includes('not authorized') ||
+                lowerMessage.includes('unauthorized') ||
+                lowerMessage.includes('new row violates') ||
+                lowerMessage.includes('violates row-level security') ||
+                lowerMessage.includes('403')
+            ) {
+                alert(
+                    'الصورة وصلت للموقع لكن Supabase منع الرفع بسبب صلاحية Storage.\n\n' +
+                    'لا تحتاج لتغيير الكود مرة أخرى. يجب إضافة صلاحية INSERT لباكت product-images في Storage Policies.\n\n' +
+                    'بعد إضافة الصلاحية اضغط حفظ المنتج مرة أخرى.'
+                );
             } else if (imageFile) {
-                alert('فشل رفع الصورة إلى Supabase. تأكد من إعداد صلاحية الرفع للـ Bucket باسم product-images.');
+                alert(
+                    'فشل رفع الصورة إلى Supabase.\n\n' +
+                    'تفاصيل الخطأ: ' + message +
+                    '\n\nتأكد من Storage Policies لباكت product-images.'
+                );
             } else {
                 alert('فشل حفظ المنتج في قاعدة البيانات.');
             }
@@ -4910,43 +4489,15 @@
     }
 
     function editProduct(id) {
-
-        const p =
-            products.find(
-                prod => prod.id === id
-            );
-
+        const p = products.find(prod => prod.id === id);
         if (!p) return;
 
-        document.getElementById(
-            'edit-prod-id'
-        ).value =
-            p.id;
-
-        document.getElementById(
-            'p-name'
-        ).value =
-            p.name;
-
-        document.getElementById(
-            'p-price'
-        ).value =
-            p.price ?? '';
-
-        document.getElementById(
-            'p-half-wholesale'
-        ).value =
-            p.halfWholesalePrice ?? '';
-
-        document.getElementById(
-            'p-wholesale'
-        ).value =
-            p.wholesalePrice ?? '';
-
-        document.getElementById(
-            'p-img'
-        ).value =
-            p.img || '';
+        document.getElementById('edit-prod-id').value = p.id;
+        document.getElementById('p-name').value = p.name;
+        document.getElementById('p-price').value = p.price ?? '';
+        document.getElementById('p-half-wholesale').value = p.halfWholesalePrice ?? '';
+        document.getElementById('p-wholesale').value = p.wholesalePrice ?? '';
+        document.getElementById('p-img').value = p.img || '';
 
         const editImageFile = document.getElementById('p-img-file');
         if (editImageFile) editImageFile.value = '';
@@ -4961,20 +4512,11 @@
             editPreviewBox.style.display = 'none';
         }
 
-        document.getElementById(
-            'p-cat'
-        ).value =
-            p.category;
-
-        document.getElementById(
-            'save-prod-btn'
-        ).innerText =
-            'تحديث المنتج';
+        document.getElementById('p-cat').value = p.category;
+        document.getElementById('save-prod-btn').innerText = 'تحديث المنتج';
     }
 
-
     async function deleteProduct(id) {
-
         if (!cloudReady) {
             alert('الموقع غير متصل بقاعدة البيانات.');
             return;
@@ -4997,32 +4539,13 @@
         }
     }
 
-
     function resetAdminForm() {
-
-        document.getElementById(
-            'edit-prod-id'
-        ).value = '';
-
-        document.getElementById(
-            'p-name'
-        ).value = '';
-
-        document.getElementById(
-            'p-price'
-        ).value = '';
-
-        document.getElementById(
-            'p-half-wholesale'
-        ).value = '';
-
-        document.getElementById(
-            'p-wholesale'
-        ).value = '';
-
-        document.getElementById(
-            'p-img'
-        ).value = '';
+        document.getElementById('edit-prod-id').value = '';
+        document.getElementById('p-name').value = '';
+        document.getElementById('p-price').value = '';
+        document.getElementById('p-half-wholesale').value = '';
+        document.getElementById('p-wholesale').value = '';
+        document.getElementById('p-img').value = '';
 
         const resetImageFile = document.getElementById('p-img-file');
         if (resetImageFile) resetImageFile.value = '';
@@ -5033,117 +4556,49 @@
         if (resetPreview) resetPreview.src = '';
         if (resetStatus) resetStatus.innerText = '';
 
-        document.getElementById(
-            'save-prod-btn'
-        ).innerText =
-            'إضافة المنتج';
+        document.getElementById('save-prod-btn').innerText = 'إضافة المنتج';
     }
 
-
-    /* =========================================================
-       نظام الشات
-       ========================================================= */
+    /* ================= نظام الشات ================= */
 
     function checkCustomerChatLogin() {
-
-        if (
-            currentUserId &&
-            currentUserName
-        ) {
-
-            document
-                .getElementById('chat-login-box')
-                .classList.add('hidden');
-
-            document
-                .getElementById('chat-interface')
-                .classList.remove('hidden');
-
-            document.getElementById(
-                'display-cust-name'
-            ).innerText =
-                currentUserName;
-
+        if (currentUserId && currentUserName) {
+            document.getElementById('chat-login-box').classList.add('hidden');
+            document.getElementById('chat-interface').classList.remove('hidden');
+            document.getElementById('display-cust-name').innerText = currentUserName;
             renderCustomerChat();
-
         } else {
-
-            document
-                .getElementById('chat-login-box')
-                .classList.remove('hidden');
-
-            document
-                .getElementById('chat-interface')
-                .classList.add('hidden');
+            document.getElementById('chat-login-box').classList.remove('hidden');
+            document.getElementById('chat-interface').classList.add('hidden');
         }
     }
 
-
     function startCustomerChat() {
-
-        const nameInput =
-            document.getElementById(
-                'customer-chat-name'
-            ).value.trim();
+        const nameInput = document.getElementById('customer-chat-name').value.trim();
 
         if (!nameInput) {
-
-            alert(
-                'برجاء كتابة الاسم لكى نتمكن من المتابعة معك!'
-            );
-
+            alert('برجاء كتابة الاسم لكى نتمكن من المتابعة معك!');
             return;
         }
 
-        currentUserId =
-            'user_' +
-            Math.random()
-                .toString(36)
-                .substr(2, 9);
+        currentUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+        currentUserName = nameInput;
 
-        currentUserName =
-            nameInput;
-
-        localStorage.setItem(
-            'salama_user_id',
-            currentUserId
-        );
-
-        localStorage.setItem(
-            'salama_user_name',
-            currentUserName
-        );
+        localStorage.setItem('salama_user_id', currentUserId);
+        localStorage.setItem('salama_user_name', currentUserName);
 
         checkCustomerChatLogin();
     }
 
-
     function resetCustomerIdentity() {
-
-        if (
-            confirm(
-                'هل تريد تسجيل الخروج وكتابة اسم جديد؟'
-            )
-        ) {
-
-            localStorage.removeItem(
-                'salama_user_id'
-            );
-
-            localStorage.removeItem(
-                'salama_user_name'
-            );
-
+        if (confirm('هل تريد تسجيل الخروج وكتابة اسم جديد؟')) {
+            localStorage.removeItem('salama_user_id');
+            localStorage.removeItem('salama_user_name');
             currentUserId = null;
-
             currentUserName = null;
-
             checkCustomerChatLogin();
         }
     }
-
-
-    /* ================= إرسال رسالة ================= */
 
     async function sendChatMessage(sender) {
         const isCustomer = sender === 'customer';
@@ -5164,7 +4619,6 @@
             }
 
             targetUserId = selectedAdminUserId;
-
             const userObj = getUserObjById(selectedAdminUserId);
             targetUserName = userObj ? userObj.name : 'عميل';
         }
@@ -5183,20 +4637,15 @@
             })
         };
 
-        chatMessages = chatMessages.filter(
-            m => !(m.userId === targetUserId && m.type === 'deleted_user')
-        );
-
+        chatMessages = chatMessages.filter(m => !(m.userId === targetUserId && m.type === 'deleted_user'));
         chatMessages.push(message);
         pendingChatMessageIds.add(message.id);
         textInput.value = '';
 
-        // الحفاظ على صندوق الكتابة مفتوحاً دائماً بعد الإرسال.
         textInput.disabled = false;
         textInput.style.display = '';
         textInput.style.visibility = 'visible';
 
-        // الرسالة تظهر فوراً مثل واتساب بدون انتظار الشبكة.
         if (isCustomer) {
             renderCustomerChat();
         } else {
@@ -5205,12 +4654,8 @@
             checkAdminNotifications();
         }
 
-        // الحفظ في الخلفية وبطابور آمن حتى لا تضيع الرسائل المتتالية.
         queueChatSave();
     }
-
-
-    /* ================= إرسال صورة ================= */
 
     function compressChatImage(file) {
         return new Promise((resolve, reject) => {
@@ -5219,17 +4664,14 @@
                 return;
             }
 
-            // منع الصور الضخمة من تجميد الهاتف أو قاعدة البيانات.
             if (file.size > 12 * 1024 * 1024) {
                 reject(new Error('حجم الصورة كبير جداً. اختر صورة أقل من 12 ميجابايت.'));
                 return;
             }
 
             const reader = new FileReader();
-
             reader.onload = function(e) {
                 const img = new Image();
-
                 img.onload = function() {
                     try {
                         const maxSize = 1000;
@@ -5251,11 +4693,9 @@
                         ctx.fillRect(0, 0, width, height);
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        // نحاول الحفاظ على وضوح إيصال InstaPay مع تقليل الحجم.
                         let quality = 0.68;
                         let result = canvas.toDataURL('image/jpeg', quality);
 
-                        // سقف تقريبي 420KB للصورة الواحدة حتى لا يكبر سجل الشات بسرعة.
                         while (result.length > 560000 && quality > 0.38) {
                             quality -= 0.06;
                             result = canvas.toDataURL('image/jpeg', quality);
@@ -5266,11 +4706,9 @@
                         reject(err);
                     }
                 };
-
                 img.onerror = () => reject(new Error('تعذر فتح الصورة'));
                 img.src = e.target.result;
             };
-
             reader.onerror = () => reject(new Error('تعذر قراءة ملف الصورة'));
             reader.readAsDataURL(file);
         });
@@ -5286,12 +4724,10 @@
         if (!preview || !file) return;
 
         const objectUrl = URL.createObjectURL(file);
-
         preview.innerHTML = `
             <img src="${objectUrl}" alt="معاينة الصورة">
             <button type="button" onclick="cancelChatImagePreview('${sender}')">✕</button>
         `;
-
         preview.dataset.objectUrl = objectUrl;
         preview.classList.add('active');
     }
@@ -5301,7 +4737,6 @@
         const preview = document.getElementById(
             isCustomer ? 'customer-chat-image-preview' : 'admin-chat-image-preview'
         );
-
         const input = document.getElementById(
             isCustomer ? 'chat-file-input' : 'admin-chat-file-input'
         );
@@ -5336,12 +4771,10 @@
             }
 
             targetUserId = selectedAdminUserId;
-
             const userObj = getUserObjById(selectedAdminUserId);
             targetUserName = userObj ? userObj.name : 'عميل';
         }
 
-        // نحتفظ بالمعاينة أثناء تجهيز الصورة ثم نغلقها بعد الإرسال.
         try {
             const compressedImage = await compressChatImage(file);
 
@@ -5359,10 +4792,7 @@
                 })
             };
 
-            chatMessages = chatMessages.filter(
-                m => !(m.userId === targetUserId && m.type === 'deleted_user')
-            );
-
+            chatMessages = chatMessages.filter(m => !(m.userId === targetUserId && m.type === 'deleted_user'));
             chatMessages.push(imageMessage);
             pendingChatMessageIds.add(imageMessage.id);
 
@@ -5374,11 +4804,8 @@
                 checkAdminNotifications();
             }
 
-            // تنظيف حقل الصورة بعد أن أصبحت الرسالة داخل الشات.
             cancelChatImagePreview(sender);
 
-            // إعادة التركيز على خانة الكتابة فوراً بعد إرسال الصورة،
-            // حتى يقدر العميل/الإدارة يكتب رسالة جديدة مباشرة مثل واتساب.
             const nextTextInput = document.getElementById(
                 isCustomer ? 'chat-input-text' : 'admin-chat-input-text'
             );
@@ -5398,49 +4825,27 @@
                 nextTextInput.focus();
             }
 
-            // الحفظ في الخلفية؛ لا ننتظر الشبكة ولا نعيد تحميل الصفحة.
             queueChatSave();
-
         } catch (error) {
             console.error('Chat image send error:', error);
             cancelChatImagePreview(sender);
-            alert(error && error.message
-                ? error.message
-                : 'تعذر إرسال الصورة حالياً.');
+            alert(error && error.message ? error.message : 'تعذر إرسال الصورة حالياً.');
         }
     }
 
-
-    /* ================= عرض شات العميل ================= */
-
     function renderCustomerChat() {
-
-        const box =
-            document.getElementById(
-                'chat-messages-list'
-            );
-
+        const box = document.getElementById('chat-messages-list');
         const renderCutoffs = {};
-        const myMessages =
-            chatMessages.filter(
-                m =>
-                    m.userId === currentUserId &&
-                    m.type !== 'admin_password' &&
-                    !isMessageHiddenByChatDeletion(m, renderCutoffs)
-            );
-
-        renderMessagesHTML(
-            myMessages,
-            box,
-            'customer'
+        const myMessages = chatMessages.filter(
+            m =>
+                m.userId === currentUserId &&
+                m.type !== 'admin_password' &&
+                !isMessageHiddenByChatDeletion(m, renderCutoffs)
         );
+
+        renderMessagesHTML(myMessages, box, 'customer');
     }
 
-
-    /* ================= بيانات المستخدم ================= */
-
-    // علامة الحذف تخص الرسائل الموجودة قبل وقت الحذف فقط.
-    // إذا عاد نفس العميل وأرسل رسالة جديدة بعد الحذف، يبدأ الشات من جديد بشكل طبيعي.
     function getDeletedChatCutoffs() {
         const cutoffs = {};
         chatMessages.forEach(function (m) {
@@ -5454,7 +4859,6 @@
         return cutoffs;
     }
 
-    // حذف الشات من الإدارة فقط: لا نعدّل الرسائل السحابية.
     function getAdminLocalChatCutoffs() {
         try {
             return JSON.parse(localStorage.getItem('salama_admin_deleted_chats') || '{}') || {};
@@ -5470,7 +4874,7 @@
         localStorage.setItem('salama_admin_deleted_chats', JSON.stringify(cutoffs));
     }
 
-function isMessageHiddenByChatDeletion(msg, cutoffs) {
+    function isMessageHiddenByChatDeletion(msg, cutoffs) {
         if (!msg || !msg.userId) return false;
         if (msg.type === 'deleted_user') return true;
 
@@ -5494,34 +4898,26 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
     }
 
     function getUserObjById(uid) {
-
         const cutoffs = getAdminLocalChatCutoffs();
         const cutoff = cutoffs[uid] || 0;
 
-        const msg =
-            chatMessages.find(
-                m =>
-                    m.userId === uid &&
-                    m.type !== 'deleted_user' &&
-                    m.type !== 'admin_password' &&
-                    (!cutoff || Number(m.timestamp || m.createdAt || 0) > cutoff)
-            );
+        const msg = chatMessages.find(
+            m =>
+                m.userId === uid &&
+                m.type !== 'deleted_user' &&
+                m.type !== 'admin_password' &&
+                (!cutoff || Number(m.timestamp || m.createdAt || 0) > cutoff)
+        );
 
         if (msg) {
-
             return {
                 id: uid,
                 name: msg.userName
             };
         }
 
-        const ord =
-            orders.find(
-                o => o.userId === uid
-            );
-
+        const ord = orders.find(o => o.userId === uid);
         if (ord) {
-
             return {
                 id: uid,
                 name: ord.customer
@@ -5531,25 +4927,10 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
         return null;
     }
 
-
-    /* ================= قائمة العملاء ================= */
-
     function renderAdminSidebar() {
-
-        const sidebar =
-            document.getElementById(
-                'admin-wa-users-list'
-            );
-
-        const searchInput =
-            document.getElementById(
-                'admin-user-search-input'
-            );
-
-        const query =
-            searchInput
-                ? searchInput.value.trim().toLowerCase()
-                : '';
+        const sidebar = document.getElementById('admin-wa-users-list');
+        const searchInput = document.getElementById('admin-user-search-input');
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
         sidebar.innerHTML = '';
 
@@ -5557,91 +4938,49 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
         const deletedChatCutoffs = getAdminLocalChatCutoffs();
 
         chatMessages.forEach(msg => {
-
             if (msg.type === 'admin_password' || msg.type === 'deleted_user') return;
             if (isMessageHiddenByChatDeletion(msg, deletedChatCutoffs)) return;
 
             if (msg.userId) {
-
                 usersMap[msg.userId] = {
-
-                    id:
-                        msg.userId,
-
-                    name:
-                        msg.userName || 'عميل',
-
-                    lastMsg:
-                        msg.type === 'text'
-                            ? msg.content
-                            : '📷 صورة مرفقة',
-
-                    time:
-                        msg.time
+                    id: msg.userId,
+                    name: msg.userName || 'عميل',
+                    lastMsg: msg.type === 'text' ? msg.content : '📷 صورة مرفقة',
+                    time: msg.time
                 };
             }
         });
 
         orders.forEach(ord => {
-
             if (
                 ord.userId &&
                 (!deletedChatCutoffs[ord.userId] || hasActiveChatAfterDeletion(ord.userId)) &&
                 !usersMap[ord.userId]
             ) {
-
                 usersMap[ord.userId] = {
-
-                    id:
-                        ord.userId,
-
-                    name:
-                        ord.customer || 'عميل',
-
-                    lastMsg:
-                        `طلب جديد بقيمة ${ord.total} ج.م`,
-
-                    time:
-                        'طلب جديد'
+                    id: ord.userId,
+                    name: ord.customer || 'عميل',
+                    lastMsg: `طلب جديد بقيمة ${ord.total} ج.م`,
+                    time: 'طلب جديد'
                 };
             }
         });
 
-        let usersList =
-            Object.values(usersMap);
+        let usersList = Object.values(usersMap);
 
         if (query) {
-
-            usersList =
-                usersList.filter(
-                    u =>
-                        u.name
-                            .toLowerCase()
-                            .includes(query)
-                );
+            usersList = usersList.filter(u => u.name.toLowerCase().includes(query));
         }
 
         if (usersList.length === 0) {
-
             sidebar.innerHTML = `
-
-                <div
-                    style="
-                        padding:20px;
-                        text-align:center;
-                        color:var(--text-muted);
-                        font-size:13px;
-                    "
-                >
+                <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">
                     لا يوجد عملاء مطبق عليهم البحث
                 </div>
-
             `;
-
             return;
         }
 
-        // حساب عدد الرسائل غير المقروءة لكل مستخدم لعرضها بجانب اسمه في القائمة
         let unreadCounts = {};
         const unreadCutoffs = getAdminLocalChatCutoffs();
         chatMessages.forEach(m => {
@@ -5660,68 +4999,31 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
         }
 
         usersList.reverse().forEach(u => {
-
-            const activeClass =
-                selectedAdminUserId === u.id
-                    ? 'active'
-                    : '';
-
-            const firstLetter =
-                u.name
-                    .charAt(0)
-                    .toUpperCase();
-
+            const activeClass = selectedAdminUserId === u.id ? 'active' : '';
+            const firstLetter = u.name.charAt(0).toUpperCase();
             const unreadNum = unreadCounts[u.id] || 0;
             const badgeHTML = unreadNum > 0 ? `<span class="admin-unread-badge">${unreadNum}</span>` : '';
 
             sidebar.innerHTML += `
-
                 <div
                     class="wa-chat-item ${activeClass}"
                     data-user-id="${u.id}"
                     data-user-name="${String(u.name).replace(/"/g, '&quot;')}"
                     oncontextmenu="showChatContextMenu(event, this); return false;"
-                    onclick="
-                        selectAdminUser(
-                            '${u.id}',
-                            '${u.name}'
-                        )
-                    "
+                    onclick="selectAdminUser('${u.id}', '${u.name}')"
                 >
-
-                    <div class="wa-avatar">
-                        ${firstLetter}
-                    </div>
-
+                    <div class="wa-avatar">${firstLetter}</div>
                     <div class="wa-chat-info">
-
                         <div class="wa-chat-name">
-
-                            <span>
-                                ${badgeHTML}
-                                ${u.name}
-                            </span>
-
-                            <span class="wa-chat-time">
-                                ${u.time}
-                            </span>
-
+                            <span>${badgeHTML}${u.name}</span>
+                            <span class="wa-chat-time">${u.time}</span>
                         </div>
-
-                        <div class="wa-chat-lastmsg">
-                            ${u.lastMsg}
-                        </div>
-
+                        <div class="wa-chat-lastmsg">${u.lastMsg}</div>
                     </div>
-
                 </div>
-
             `;
         });
     }
-
-
-    /* ================= الضغط المطول على اسم العميل ================= */
 
     let chatLongPressTimer = null;
     let chatLongPressTriggered = false;
@@ -5798,82 +5100,43 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
         });
     });
 
-    /* ================= اختيار عميل ================= */
+    function selectAdminUser(uid, uname) {
+        selectedAdminUserId = uid;
 
-    function selectAdminUser(
-        uid,
-        uname
-    ) {
+        const header = document.getElementById('admin-chat-header-title');
+        header.querySelector('span').innerText = '👤 محادثة مع: ' + uname;
 
-        selectedAdminUserId =
-            uid;
-
-        const header =
-            document.getElementById(
-                'admin-chat-header-title'
-            );
-
-        header.querySelector('span').innerText =
-            '👤 محادثة مع: ' + uname;
-
-        const deleteBtn =
-            document.getElementById(
-                'delete-admin-chat-btn'
-            );
-
+        const deleteBtn = document.getElementById('delete-admin-chat-btn');
         if (deleteBtn) {
             deleteBtn.style.display = 'inline-block';
         }
 
         renderAdminSidebar();
-
         renderAdminChat();
         checkAdminNotifications();
     }
 
-
-    /* ================= حذف محادثة عميل ================= */
-
     async function deleteSelectedChat() {
-
         if (!selectedAdminUserId) {
             alert('الرجاء اختيار عميل أولاً!');
             return;
         }
 
-        const userObj =
-            getUserObjById(selectedAdminUserId);
-
-        const userName =
-            userObj
-                ? userObj.name
-                : 'العميل';
+        const userObj = getUserObjById(selectedAdminUserId);
+        const userName = userObj ? userObj.name : 'العميل';
 
         if (!confirm('هل أنت متأكد من حذف الشات بالكامل مع ' + userName + '؟\nسيتم حذف جميع الرسائل والصور في هذه المحادثة.')) {
             return;
         }
 
         const deletedUserId = selectedAdminUserId;
-
-        // الحذف هنا محلي للإدارة فقط.
-        // لا نحذف أي رسالة من Supabase ولا من جهاز العميل.
         setAdminLocalChatCutoff(deletedUserId, Date.now());
-
         selectedAdminUserId = null;
 
-        const header =
-            document.getElementById(
-                'admin-chat-header-title'
-            );
+        const header = document.getElementById('admin-chat-header-title');
+        header.querySelector('span').innerText = 'اختر عميل من القائمة لبدء المحادثة';
 
-        header.querySelector('span').innerText =
-            'اختر عميل من القائمة لبدء المحادثة';
-
-        const deleteBtn =
-            document.getElementById(
-                'delete-admin-chat-btn'
-            );
-
+        const deleteBtn = document.getElementById('delete-admin-chat-btn');
         if (deleteBtn) {
             deleteBtn.style.display = 'none';
         }
@@ -5882,51 +5145,28 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
         renderAdminChat();
     }
 
-
-    /* ================= عرض شات الإدارة ================= */
-
     function renderAdminChat() {
-
-        const box =
-            document.getElementById(
-                'admin-chat-messages-list'
-            );
+        const box = document.getElementById('admin-chat-messages-list');
 
         if (!selectedAdminUserId) {
-
             box.innerHTML = `
-
-                <p
-                    style="
-                        text-align:center;
-                        color:var(--text-muted);
-                        margin-top:50px;
-                    "
-                >
+                <p style="text-align:center;color:var(--text-muted);margin-top:50px;">
                     يرجى اختيار عميل من القائمة الجانبية لعرض المحادثة.
                 </p>
-
             `;
-
             return;
         }
 
         const renderCutoffs = getAdminLocalChatCutoffs();
-        const specificMessages =
-            chatMessages.filter(
-                m =>
-                    m.userId === selectedAdminUserId &&
-                    m.type !== 'admin_password' &&
-                    !isMessageHiddenByChatDeletion(m, renderCutoffs)
-            );
-
-        renderMessagesHTML(
-            specificMessages,
-            box,
-            'admin'
+        const specificMessages = chatMessages.filter(
+            m =>
+                m.userId === selectedAdminUserId &&
+                m.type !== 'admin_password' &&
+                !isMessageHiddenByChatDeletion(m, renderCutoffs)
         );
-    }
 
+        renderMessagesHTML(specificMessages, box, 'admin');
+    }
 
     function escapeChatHTML(value) {
         return String(value == null ? '' : value)
@@ -5937,40 +5177,17 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
             .replace(/'/g, '&#039;');
     }
 
-    /* ================= رسم الرسائل ================= */
-
-    function renderMessagesHTML(
-        messagesArr,
-        containerEl,
-        viewerType
-    ) {
-
+    function renderMessagesHTML(messagesArr, containerEl, viewerType) {
         let html = '';
 
         if (messagesArr.length === 0) {
-
             html = `
-
-                <p
-                    style="
-                        text-align:center;
-                        color:var(--text-muted);
-                        margin-top:30px;
-                        background:rgba(255,255,255,0.88);
-                        padding:10px;
-                        border-radius:8px;
-                    "
-                >
-                    لا توجد رسائل سابقة.
-                    يمكنك إرسال رسالة للعميل الآن!
+                <p style="text-align:center;color:var(--text-muted);margin-top:30px;background:rgba(255,255,255,0.88);padding:10px;border-radius:8px;">
+                    لا توجد رسائل سابقة. يمكنك إرسال رسالة للعميل الآن!
                 </p>
-
             `;
-
         } else {
-
             messagesArr.forEach(msg => {
-
                 if (viewerType === 'admin' && msg.deletedForAdmin) return;
                 if (viewerType === 'customer' && msg.deletedForCustomer) return;
 
@@ -5978,13 +5195,8 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
                     msg.id = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
                 }
 
-                const isMyMessage =
-                    msg.sender === viewerType;
-
-                const cssClass =
-                    isMyMessage
-                        ? 'received'
-                        : 'sent';
+                const isMyMessage = msg.sender === viewerType;
+                const cssClass = isMyMessage ? 'received' : 'sent';
 
                 let contentBody =
                     msg.type === 'text'
@@ -5999,35 +5211,25 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
                         `;
 
                 html += `
-
                     <div
                         class="chat-msg ${cssClass}"
                         data-message-id="${msg.id}"
                         oncontextmenu="${viewerType === 'admin' && msg.sender === 'admin' ? 'showMessageContextMenu(event, this); return false;' : ''}"
                     >
-
                         ${contentBody}
-
                         <span class="msg-meta">
                             ${msg.time}${msg.edited ? ' · تم التعديل' : ''}
                         </span>
-
                     </div>
-
                 `;
             });
         }
 
         if (containerEl) {
-
-            containerEl.innerHTML =
-                html;
-
-            containerEl.scrollTop =
-                containerEl.scrollHeight;
+            containerEl.innerHTML = html;
+            containerEl.scrollTop = containerEl.scrollHeight;
         }
     }
-
 
     function openChatImage(src) {
         if (!src) return;
@@ -6061,8 +5263,6 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
 
         document.body.appendChild(overlay);
     }
-
-    /* ================= تعديل / حذف رسائل الإدارة ================= */
 
     let messageLongPressTimer = null;
     let contextMessageId = null;
@@ -6191,9 +5391,6 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
         });
     });
 
-
-    /* ================= إرسال بالضغط على Enter ================= */
-
     document.addEventListener('DOMContentLoaded', function () {
         const customerInput = document.getElementById('chat-input-text');
         const adminInput = document.getElementById('admin-chat-input-text');
@@ -6216,9 +5413,6 @@ function isMessageHiddenByChatDeletion(msg, cutoffs) {
             });
         }
     });
-
-
-    /* ================= تشغيل الموقع ================= */
 
     (async function initializeCloud() {
         await loadCloudData();
