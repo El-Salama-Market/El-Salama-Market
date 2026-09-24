@@ -284,6 +284,19 @@
             width: 100%;
         }
 
+        /* ===== توحيد خلفية قسم المنتجات على كل الأجهزة ===== */
+        #store-section {
+            background-color: var(--bg-gray) !important;
+        }
+
+        .products-grid {
+            background-color: var(--bg-gray) !important;
+        }
+
+        .product-card {
+            background-color: #ffffff !important;
+        }
+
         .product-card {
             background: var(--surface);
             border-radius: var(--radius);
@@ -4474,8 +4487,7 @@
             } else if (imageFile) {
                 alert(
                     'فشل رفع الصورة إلى Supabase.\n\n' +
-                    'تفاصيل الخطأ: ' + message +
-                    '\n\nتأكد من Storage Policies لباكت product-images.'
+                    'تفاصيل الخطأ: ' + message + '\n\nتأكد من Storage Policies لباكت product-images.'
                 );
             } else {
                 alert('فشل حفظ المنتج في قاعدة البيانات.');
