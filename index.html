@@ -2397,8 +2397,29 @@
                 type="number"
                 id="p-price"
                 class="form-control"
-                placeholder="السعر بالجنيه"
+                placeholder="السعر بالجنيه (للمنتجات العادية)"
             >
+
+            <div style="margin:8px 0 14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;">
+                <div style="font-weight:800;margin-bottom:10px;">📦 أسعار الأحجام — للمنتجات التي لها صغير / وسط / كبير</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                    اختياري. اكتب سعر كل حجم بنفسك. يمكنك استخدام حجم واحد أو أكثر، والجبن لا تستخدم هذه الخانات لأنها تُباع بالوزن فقط.
+                </div>
+                <input type="number" id="p-size-small-price" class="form-control" placeholder="سعر الصغير" step="0.01" min="0">
+                <input type="number" id="p-size-medium-price" class="form-control" placeholder="سعر الوسط" step="0.01" min="0">
+                <input type="number" id="p-size-large-price" class="form-control" placeholder="سعر الكبير" step="0.01" min="0">
+            </div>
+
+            <div style="margin:8px 0 14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;">
+                <div style="font-weight:800;margin-bottom:10px;">🧀 أسعار الجبن بالوزن — أدخل كل سعر بنفسك</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                    هذه الأسعار اختيارية وتستخدم للجبن التي تُباع بالوزن. لا يتم حساب أي سعر تلقائيًا من سعر الكيلو.
+                </div>
+                <input type="number" id="p-cheese-eighth" class="form-control" placeholder="سعر ثمن كيلو (125 جرام)" step="0.01" min="0">
+                <input type="number" id="p-cheese-quarter" class="form-control" placeholder="سعر ربع كيلو (250 جرام)" step="0.01" min="0">
+                <input type="number" id="p-cheese-half" class="form-control" placeholder="سعر نصف كيلو (500 جرام)" step="0.01" min="0">
+                <input type="number" id="p-cheese-kilo" class="form-control" placeholder="سعر كيلو (1000 جرام)" step="0.01" min="0">
+            </div>
 
             <input
                 type="number"
@@ -2787,39 +2808,370 @@
 
     // المنتجات الأساسية المضافة من قائمة السلامة ماركت.
     const BUILT_IN_PRODUCTS = [
-        { id: 10001, name: 'عسل أسود البوادي', size: 'صغير', category: 'food-products', subcategory: 'عسل', price: null, img: 'https://via.placeholder.com/150?text=عسل' },
-        { id: 10002, name: 'عسل أسود البوادي', size: 'كبير', category: 'food-products', subcategory: 'عسل', price: null, img: 'https://via.placeholder.com/150?text=عسل' },
-
-        { id: 10003, name: 'طحينة البوادي', size: 'صغير', category: 'food-products', subcategory: 'طحينة', price: null, img: 'https://via.placeholder.com/150?text=طحينة' },
-        { id: 10004, name: 'طحينة البوادي', size: 'متوسط', category: 'food-products', subcategory: 'طحينة', price: null, img: 'https://via.placeholder.com/150?text=طحينة' },
-        { id: 10005, name: 'طحينة البوادي', size: 'كبير', category: 'food-products', subcategory: 'طحينة', price: null, img: 'https://via.placeholder.com/150?text=طحينة' },
-
-        { id: 10006, name: 'حلاوة طحينية البوادي', size: 'صغير', category: 'food-products', subcategory: 'حلاوة', price: null, img: 'https://via.placeholder.com/150?text=حلاوة' },
-        { id: 10007, name: 'حلاوة طحينية البوادي', size: 'متوسط', category: 'food-products', subcategory: 'حلاوة', price: null, img: 'https://via.placeholder.com/150?text=حلاوة' },
-        { id: 10008, name: 'حلاوة طحينية البوادي', size: 'كبير', category: 'food-products', subcategory: 'حلاوة', price: null, img: 'https://via.placeholder.com/150?text=حلاوة' },
-
-        { id: 10009, name: 'جبنة المراعي', size: 'صغير', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-        { id: 10010, name: 'جبنة المراعي', size: 'كبير', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-
-        { id: 10011, name: 'جبنة دومتي', size: 'ربع كيلو', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-        { id: 10012, name: 'جبنة دومتي', size: 'نصف كيلو', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-
-        { id: 10013, name: 'جبنة رودس سادة', size: 'ربع كيلو', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-        { id: 10014, name: 'جبنة رودس سادة', size: 'نصف كيلو', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-
-        { id: 10015, name: 'جبنة رودس نكهات مختلفة', size: 'ربع كيلو', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-        { id: 10016, name: 'جبنة رودس نكهات مختلفة', size: 'نصف كيلو', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=جبن' },
-
-        { id: 10017, name: 'White Soft Cheese', size: 'حسب العبوة', category: 'food-products', subcategory: 'جبن', price: null, img: 'https://via.placeholder.com/150?text=White+Soft+Cheese' }
-    ];
+        {
+                "id": 11001,
+                "name": "لمار بيور عنب 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11002,
+                "name": "لمار بيور جوافة 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11003,
+                "name": "لمار بيور منجا 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11004,
+                "name": "لمار بيور رمان 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11005,
+                "name": "لمار بيور برتقال 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11006,
+                "name": "لمار بيور تفاح 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11007,
+                "name": "لمار بيور أناناس 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11008,
+                "name": "لمار برتقال 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11009,
+                "name": "لمار كوكتيل 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11010,
+                "name": "لمار منجا 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11011,
+                "name": "لمار تفاح 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11012,
+                "name": "لمار خوخ 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11013,
+                "name": "جهينة برتقال 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11014,
+                "name": "جهينة منجا 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11015,
+                "name": "جهينة تفاح 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11016,
+                "name": "جهينة أناناس 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11017,
+                "name": "جهينة عنب 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11018,
+                "name": "جهينة كوكتيل 1 لتر",
+                "size": null,
+                "category": "drinks-juices",
+                "subcategory": "عصائر",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11019,
+                "name": "حلاوة حلواني",
+                "size": null,
+                "category": "food-products",
+                "subcategory": "حلاوة",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11020,
+                "name": "حلاوة البوادي",
+                "size": null,
+                "category": "food-products",
+                "subcategory": "حلاوة",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11021,
+                "name": "عسل أسود البوادي",
+                "size": null,
+                "category": "food-products",
+                "subcategory": "عسل",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11022,
+                "name": "طحينة البوادي",
+                "size": null,
+                "category": "food-products",
+                "subcategory": "طحينة",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11023,
+                "name": "جبنة رودس سادة",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11026,
+                "name": "جبنة رودس فلامنك",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11029,
+                "name": "جبنة رودس زتون",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11032,
+                "name": "جبنة رودس بسطرمه",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11035,
+                "name": "جبنة رودس طبيعي",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11038,
+                "name": "جبنة دومتي بسطرمه",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11041,
+                "name": "جبنة دومتي زتون",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11044,
+                "name": "جبنة دومتي ساده",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11047,
+                "name": "جبنة المراعي جوده",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11050,
+                "name": "جبنة المراعي ساده",
+                "category": "dairy-products",
+                "subcategory": "جبن",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11053,
+                "name": "مربى فيتراك فراولة",
+                "size": "نص",
+                "category": "food-products",
+                "subcategory": "مربى",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11054,
+                "name": "مربى فيتراك فراولة",
+                "size": "ربع",
+                "category": "food-products",
+                "subcategory": "مربى",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11055,
+                "name": "مربى فيتراك تين",
+                "size": "نص",
+                "category": "food-products",
+                "subcategory": "مربى",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11056,
+                "name": "مربى فيتراك تين",
+                "size": "ربع",
+                "category": "food-products",
+                "subcategory": "مربى",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11057,
+                "name": "جبنة مثلثات اسكندرية",
+                "category": "dairy-products",
+                "subcategory": "جبن مثلثات - 8 قطع",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11060,
+                "name": "جبنة مثلثات ابو الولد",
+                "category": "dairy-products",
+                "subcategory": "جبن مثلثات - 8 قطع",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11063,
+                "name": "جبنة مثلثات لافاشكيري",
+                "category": "dairy-products",
+                "subcategory": "جبن مثلثات - 8 قطع",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11066,
+                "name": "جبنة مثلثات مزارع دينا",
+                "category": "dairy-products",
+                "subcategory": "جبن مثلثات - 8 قطع",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=منتج"
+        },
+        {
+                "id": 11069,
+                "name": "لبن لامار كامل الدسم 1 لتر",
+                "size": "1 لتر",
+                "category": "dairy-products",
+                "subcategory": "ألبان",
+                "price": null,
+                "img": "https://via.placeholder.com/150?text=لبن+لامار"
+        }
+];
 
     let products =
         JSON.parse(localStorage.getItem('salama_products')) ||
         [
             {
                 id: 1,
-                name: 'لبن كامل الدسم 1 لتر',
-                price: 38,
+                name: 'لبن لامار كامل الدسم 1 لتر',
+                price: null,
                 category: 'dairy-products',
                 img: 'https://via.placeholder.com/150?text=لبن'
             },
@@ -2849,6 +3201,38 @@
             }
         ];
 
+    // نحتفظ فقط بالمنتجات الجديدة التي أرسلتها + لبن المراعي + لبن بخيره.
+    // أي منتجات قديمة محفوظة في LocalStorage أو Supabase يتم حذفها تلقائياً.
+    function isAllowedMilkProduct(product) {
+        const name = String(product && product.name || '').trim().toLowerCase();
+        return name.includes('لبن المراعي') || name.includes('لبن بخيره') || name.includes('لبن بخيرة');
+    }
+
+    function cleanOldProducts() {
+        if (!Array.isArray(products)) products = [];
+
+        const builtInIds = new Set(BUILT_IN_PRODUCTS.map(p => p.id));
+        const before = products.length;
+
+        products = products.filter(function(p) {
+            if (!p) return false;
+            return builtInIds.has(p.id) || isAllowedMilkProduct(p);
+        });
+
+        // إزالة تكرارات الجبن القديمة من التخزين المحلي: نفس اسم الجبن = صنف واحد.
+        const cheeseNames = new Set();
+        products = products.filter(function(p) {
+            if (!isCheeseProduct(p)) return true;
+            const name = String(p.name || '').trim();
+            if (!name) return true;
+            if (cheeseNames.has(name)) return false;
+            cheeseNames.add(name);
+            return true;
+        });
+
+        return products.length !== before;
+    }
+
     function mergeBuiltInProducts() {
         if (!Array.isArray(products)) products = [];
 
@@ -2865,12 +3249,15 @@
         return changed;
     }
 
+    cleanOldProducts();
     mergeBuiltInProducts();
+    cleanOldProducts();
     products = (Array.isArray(products) ? products : []).map(function(p) {
         return Object.assign({}, p, {
             halfWholesaleQty: Number(p.halfWholesaleQty || 0) > 0 ? Number(p.halfWholesaleQty) : null,
             wholesaleQty: Number(p.wholesaleQty || 0) > 0 ? Number(p.wholesaleQty) : null,
-            quantity: undefined
+            quantity: undefined,
+            size: isCheeseProduct(p) ? '' : (p.size || '')
         });
     });
 
@@ -3336,7 +3723,9 @@
 
             if (data) {
                 if (Array.isArray(data.products)) products = data.products;
-                mergeBuiltInProducts();
+                const productsChangedByCleanup = cleanOldProducts();
+                const productsChangedByBuiltIns = mergeBuiltInProducts();
+                cleanOldProducts();
                 if (Array.isArray(data.orders)) orders = data.orders;
                 if (Array.isArray(data.chats)) chatMessages = data.chats;
 
@@ -3345,6 +3734,16 @@
                 localStorage.setItem('salama_products', JSON.stringify(products));
                 localStorage.setItem('salama_orders', JSON.stringify(orders));
                 localStorage.setItem('salama_chats', JSON.stringify(chatMessages));
+
+                if (productsChangedByCleanup || productsChangedByBuiltIns) {
+                    await supabaseClient
+                        .from('site_data')
+                        .update({
+                            products: products,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', 1);
+                }
             } else {
                 await supabaseClient
                     .from('site_data')
@@ -3380,8 +3779,24 @@
             if (error || !data) return false;
 
             if (Array.isArray(data.products)) products = data.products;
-            mergeBuiltInProducts();
+            const refreshProductsChangedByCleanup = cleanOldProducts();
+            const refreshProductsChangedByBuiltIns = mergeBuiltInProducts();
+            cleanOldProducts();
             if (Array.isArray(data.orders)) orders = data.orders;
+
+            if (refreshProductsChangedByCleanup || refreshProductsChangedByBuiltIns) {
+                try {
+                    await supabaseClient
+                        .from('site_data')
+                        .update({
+                            products: products,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', 1);
+                } catch (cleanupSaveError) {
+                    console.warn('Product cleanup cloud save error:', cleanupSaveError);
+                }
+            }
             if (Array.isArray(data.chats)) {
                 const cloudIds = new Set(data.chats.map(m => m.id));
                 const localPending = chatMessages.filter(m => pendingChatMessageIds.has(m.id) && !cloudIds.has(m.id));
@@ -3519,7 +3934,7 @@
                             ${p.name}
                         </div>
 
-                        ${p.size ? `
+                        ${p.size && !isCheeseProduct(p) ? `
                             <span class="product-size">
                                 ${p.size}
                             </span>
@@ -3527,21 +3942,40 @@
                     </div>
 
                     <div class="product-footer">
-                        <div class="${hasPrice ? 'price' : 'product-price-missing'}">
-                            ${hasPrice ? `${Number(p.price)} ج.م` : 'السعر غير محدد'}
+                        <div class="${hasPrice || getProductDetailGroups(p).length ? 'price' : 'product-price-missing'}">
+                            ${
+                                getProductDetailGroups(p).length
+                                    ? 'حسب الأحجام'
+                                    : hasPrice
+                                        ? (isWeightBasedCheese(p) ? `${Number(p.price)} ج.م/كجم` : `${Number(p.price)} ج.م`)
+                                        : 'السعر غير محدد'
+                            }
                         </div>
 
                         ${
                             hasPrice
-                            ? `
-                                <button
-                                    class="btn-add-item"
-                                    onclick="event.stopPropagation(); addToCart(${p.id}, event)"
-                                    aria-label="إضافة ${safeName} إلى السلة"
-                                >
-                                    +
-                                </button>
-                            `
+                            ? (
+                                isWeightBasedCheese(p)
+                                ? `
+                                    <button
+                                        class="btn-add-item"
+                                        onclick="event.stopPropagation(); openProductDetails(${p.id})"
+                                        aria-label="اختيار وزن ${safeName}"
+                                        title="اختيار الوزن"
+                                    >
+                                        +
+                                    </button>
+                                `
+                                : `
+                                    <button
+                                        class="btn-add-item"
+                                        onclick="event.stopPropagation(); addToCart(${p.id}, event)"
+                                        aria-label="إضافة ${safeName} إلى السلة"
+                                    >
+                                        +
+                                    </button>
+                                `
+                            )
                             : `
                                 <button
                                     class="btn-add-item"
@@ -3619,9 +4053,61 @@
         return options.length > 1 ? options : [];
     }
 
+    function isCheeseProduct(product) {
+        if (!product) return false;
+        const category = String(product.category || '').trim();
+        const name = String(product.name || '').trim();
+        return category === 'dairy-products' && /جبن|جبنة/.test(name);
+    }
+
+    function isWeightBasedCheese(product) {
+        // كل الجبن يُباع بالوزن فقط، ولا يوجد له كبير/وسط/صغير.
+        return isCheeseProduct(product);
+    }
+
+    function getCheeseWeightOptions(product) {
+        if (!isWeightBasedCheese(product)) return [];
+
+        const values = [
+            { key: 'eighth', label: 'ثمن كيلو', grams: 125, value: product.cheeseEighthPrice },
+            { key: 'quarter', label: 'ربع كيلو', grams: 250, value: product.cheeseQuarterPrice },
+            { key: 'half', label: 'نصف كيلو', grams: 500, value: product.cheeseHalfPrice },
+            { key: 'kilo', label: 'كيلو', grams: 1000, value: product.cheeseKiloPrice }
+        ];
+
+        return values
+            .filter(option => isValidProductPrice(option.value))
+            .map(option => ({
+                key: option.key,
+                label: option.label,
+                grams: option.grams,
+                price: Number(option.value)
+            }));
+    }
+
     function getProductDetailGroups(product) {
         if (!product) return [];
 
+        // الجبن لا يوجد له كبير/وسط/صغير؛ الاختيار يكون بالوزن فقط.
+        if (isCheeseProduct(product)) return [];
+
+        // إذا أدخل المدير أسعار الأحجام يدويًا، نستخدمها مباشرة.
+        const manualSizes = [
+            { key: 'small', label: 'صغير', price: product.sizeSmallPrice },
+            { key: 'medium', label: 'وسط', price: product.sizeMediumPrice },
+            { key: 'large', label: 'كبير', price: product.sizeLargePrice }
+        ]
+            .filter(option => isValidProductPrice(option.price))
+            .map(option => ({
+                key: `manual-${option.key}`,
+                label: option.label,
+                price: Number(option.price),
+                productId: product.id
+            }));
+
+        if (manualSizes.length) return manualSizes;
+
+        // دعم البيانات القديمة التي كانت تعتمد على منتجات منفصلة لكل حجم.
         const sameName = products.filter(p =>
             p &&
             String(p.name || '').trim() === String(product.name || '').trim()
@@ -3673,6 +4159,7 @@
 
         const sizeOptions = getProductDetailGroups(product);
         const milkOptions = getMilkSalesOptions(product);
+        const cheeseWeightOptions = getCheeseWeightOptions(product);
 
         let html = '';
         let firstSelectable = null;
@@ -3697,6 +4184,33 @@
                                 >
                                     ${escapeProductText(option.label)}
                                     <span class="product-option-price">${priceText}</span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (cheeseWeightOptions.length) {
+            html += `
+                <div class="product-option-section">
+                    <div class="product-option-title">اختار الوزن</div>
+                    <div class="product-options-grid">
+                        ${cheeseWeightOptions.map(option => {
+                            return `
+                                <button
+                                    type="button"
+                                    class="product-option-btn"
+                                    data-detail-type="weight"
+                                    data-weight-key="${option.key}"
+                                    onclick="selectProductDetailWeight('${option.key}', this)"
+                                >
+                                    ${escapeProductText(option.label)}
+                                    <small style="display:block;color:var(--text-muted);font-size:10px;margin-top:2px;">
+                                        ${option.grams} جرام
+                                    </small>
+                                    <span class="product-option-price">${Number(option.price)} ج.م</span>
                                 </button>
                             `;
                         }).join('')}
@@ -3733,7 +4247,7 @@
             `;
         }
 
-        if (!sizeOptions.length && !milkOptions.length) {
+        if (!sizeOptions.length && !milkOptions.length && !cheeseWeightOptions.length) {
             const priceText = isValidProductPrice(product.price)
                 ? `${Number(product.price)} ج.م`
                 : 'السعر غير محدد';
@@ -3764,6 +4278,10 @@
             }
             addBtn.disabled = false;
             note.textContent = 'اختار الحجم أو طريقة البيع ثم اضغط إضافة إلى السلة.';
+        } else if (cheeseWeightOptions.length) {
+            // الجبن بالوزن: لا نختار وزنًا تلقائيًا حتى يحدد العميل الكمية بنفسه.
+            addBtn.disabled = true;
+            note.textContent = 'اختار الوزن: ثمن كيلو أو ربع كيلو أو نصف كيلو.';
         } else {
             addBtn.disabled = true;
             note.textContent = 'بعض الاختيارات لا يمكن شراؤها قبل تحديد سعرها من الإدارة.';
@@ -3795,6 +4313,29 @@
         if (note) note.textContent = currentProductDetails.selectedPrice === null
             ? 'هذا الحجم لم يتم تحديد سعره بعد.'
             : `تم اختيار ${product.size}.`;
+    }
+
+    function selectProductDetailWeight(weightKey, button) {
+        const product = products.find(p => p.id === currentProductDetails.productId);
+        if (!product) return;
+
+        const options = getCheeseWeightOptions(product);
+        const option = options.find(o => o.key === weightKey);
+        if (!option) return;
+
+        document.querySelectorAll('#product-details-options [data-detail-type="weight"]')
+            .forEach(btn => btn.classList.remove('active'));
+
+        if (button) button.classList.add('active');
+
+        currentProductDetails.selectedPrice = Number(option.price);
+        currentProductDetails.selectedLabel = `الوزن: ${option.label} (${option.grams} جرام)`;
+
+        const addBtn = document.getElementById('product-details-add');
+        const note = document.getElementById('product-details-note');
+
+        if (addBtn) addBtn.disabled = false;
+        if (note) note.textContent = `تم اختيار ${option.label} (${option.grams} جرام) بسعر ${Number(option.price)} ج.م.`;
     }
 
     function selectProductDetailSale(saleKey, button) {
@@ -4356,11 +4897,17 @@
                     </td>
                     <td>
                         <strong>${p.name}</strong>
-                        ${p.subcategory ? `<div style="font-size:11px;color:var(--text-muted);">${p.subcategory}${p.size ? ` • ${p.size}` : ''}</div>` : (p.size ? `<div style="font-size:11px;color:var(--text-muted);">${p.size}</div>` : '')}
+                        ${p.subcategory ? `<div style="font-size:11px;color:var(--text-muted);">${p.subcategory}${p.size && !isCheeseProduct(p) ? ` • ${p.size}` : ''}</div>` : (p.size && !isCheeseProduct(p) ? `<div style="font-size:11px;color:var(--text-muted);">${p.size}</div>` : '')}
                     </td>
                     <td>${getCategoryName(p.category)}</td>
                     <td>
-                        ${p.price} ج.م
+                        ${isWeightBasedCheese(p) ? `
+                            ${isValidProductPrice(p.cheeseEighthPrice) ? `<div>ثمن: ${p.cheeseEighthPrice} ج.م</div>` : ''}
+                            ${isValidProductPrice(p.cheeseQuarterPrice) ? `<div>ربع: ${p.cheeseQuarterPrice} ج.م</div>` : ''}
+                            ${isValidProductPrice(p.cheeseHalfPrice) ? `<div>نصف: ${p.cheeseHalfPrice} ج.م</div>` : ''}
+                            ${isValidProductPrice(p.cheeseKiloPrice) ? `<div>كيلو: ${p.cheeseKiloPrice} ج.م</div>` : ''}
+                            ${!isValidProductPrice(p.cheeseEighthPrice) && !isValidProductPrice(p.cheeseQuarterPrice) && !isValidProductPrice(p.cheeseHalfPrice) && !isValidProductPrice(p.cheeseKiloPrice) ? 'لا توجد أسعار أوزان' : ''}
+                        ` : `${isValidProductPrice(p.price) ? `${p.price} ج.م` : 'السعر غير محدد'}`}
                         ${isValidProductPrice(p.wholesalePrice) ? `<div style="font-size:11px;color:var(--text-muted);">جملة: ${p.wholesalePrice} ج.م</div>` : ''}
                     </td>
                     <td>
@@ -4461,7 +5008,22 @@
 
         const id = document.getElementById('edit-prod-id').value;
         const name = document.getElementById('p-name').value.trim();
-        const price = parseFloat(document.getElementById('p-price').value);
+        const priceRaw = document.getElementById('p-price').value;
+        const price = priceRaw === '' ? null : parseFloat(priceRaw);
+        const cheeseEighthRaw = document.getElementById('p-cheese-eighth').value;
+        const cheeseQuarterRaw = document.getElementById('p-cheese-quarter').value;
+        const cheeseHalfRaw = document.getElementById('p-cheese-half').value;
+        const cheeseKiloRaw = document.getElementById('p-cheese-kilo').value;
+        const sizeSmallRaw = document.getElementById('p-size-small-price').value;
+        const sizeMediumRaw = document.getElementById('p-size-medium-price').value;
+        const sizeLargeRaw = document.getElementById('p-size-large-price').value;
+        const sizeSmallPrice = sizeSmallRaw === '' ? null : parseFloat(sizeSmallRaw);
+        const sizeMediumPrice = sizeMediumRaw === '' ? null : parseFloat(sizeMediumRaw);
+        const sizeLargePrice = sizeLargeRaw === '' ? null : parseFloat(sizeLargeRaw);
+        const cheeseEighthPrice = cheeseEighthRaw === '' ? null : parseFloat(cheeseEighthRaw);
+        const cheeseQuarterPrice = cheeseQuarterRaw === '' ? null : parseFloat(cheeseQuarterRaw);
+        const cheeseHalfPrice = cheeseHalfRaw === '' ? null : parseFloat(cheeseHalfRaw);
+        const cheeseKiloPrice = cheeseKiloRaw === '' ? null : parseFloat(cheeseKiloRaw);
         const halfWholesalePriceRaw = document.getElementById('p-half-wholesale').value;
         const halfWholesaleQtyRaw = document.getElementById('p-half-wholesale-qty').value;
         const wholesalePriceRaw = document.getElementById('p-wholesale').value;
@@ -4475,8 +5037,17 @@
         const category = document.getElementById('p-cat').value;
         const saveButton = document.getElementById('save-prod-btn');
 
-        if (!name || isNaN(price)) {
-            alert('برجاء إدخال بيانات صحيحة');
+        const hasAnyCheeseWeightPrice = [cheeseEighthPrice, cheeseQuarterPrice, cheeseHalfPrice, cheeseKiloPrice].some(v => !isNaN(v) && v >= 0);
+        const hasAnySizePrice = [sizeSmallPrice, sizeMediumPrice, sizeLargePrice].some(v => !isNaN(v) && v >= 0);
+        const isCheeseCategory = category === 'dairy-products' && /جبن|جبنة/.test(name) && !/مثلثات/.test(name);
+
+        if (!name || (!isCheeseCategory && (price === null || isNaN(price)) && !hasAnySizePrice)) {
+            alert('برجاء إدخال اسم المنتج والسعر. وإذا كان المنتج جبنة بالوزن، يمكنك إدخال أسعار الأوزان يدويًا.');
+            return;
+        }
+
+        if (isCheeseCategory && !hasAnyCheeseWeightPrice && (price === null || isNaN(price))) {
+            alert('برجاء إدخال سعر واحد على الأقل للجبنة: ثمن أو ربع أو نصف أو كيلو.');
             return;
         }
 
@@ -4499,21 +5070,35 @@
                 products[index] = {
                     id: parseInt(id),
                     name: name,
-                    price: price,
+                    price: isNaN(price) ? null : price,
+                    sizeSmallPrice: isCheeseCategory ? null : (isNaN(sizeSmallPrice) ? null : sizeSmallPrice),
+                    sizeMediumPrice: isCheeseCategory ? null : (isNaN(sizeMediumPrice) ? null : sizeMediumPrice),
+                    sizeLargePrice: isCheeseCategory ? null : (isNaN(sizeLargePrice) ? null : sizeLargePrice),
+                    cheeseEighthPrice: isNaN(cheeseEighthPrice) ? null : cheeseEighthPrice,
+                    cheeseQuarterPrice: isNaN(cheeseQuarterPrice) ? null : cheeseQuarterPrice,
+                    cheeseHalfPrice: isNaN(cheeseHalfPrice) ? null : cheeseHalfPrice,
+                    cheeseKiloPrice: isNaN(cheeseKiloPrice) ? null : cheeseKiloPrice,
                     halfWholesalePrice: isNaN(halfWholesalePrice) ? null : halfWholesalePrice,
                     halfWholesaleQty: isNaN(halfWholesaleQty) || halfWholesaleQty < 1 ? null : halfWholesaleQty,
                     wholesalePrice: isNaN(wholesalePrice) ? null : wholesalePrice,
                     wholesaleQty: isNaN(wholesaleQty) || wholesaleQty < 1 ? null : wholesaleQty,
                     category: category,
                     img: img,
-                    size: products[index].size || '',
+                    size: isCheeseProduct({ name: name, category: category }) ? '' : (products[index].size || ''),
                     subcategory: products[index].subcategory || ''
                 };
             } else {
                 products.push({
                     id: Date.now(),
                     name: name,
-                    price: price,
+                    price: isNaN(price) ? null : price,
+                    sizeSmallPrice: isCheeseCategory ? null : (isNaN(sizeSmallPrice) ? null : sizeSmallPrice),
+                    sizeMediumPrice: isCheeseCategory ? null : (isNaN(sizeMediumPrice) ? null : sizeMediumPrice),
+                    sizeLargePrice: isCheeseCategory ? null : (isNaN(sizeLargePrice) ? null : sizeLargePrice),
+                    cheeseEighthPrice: isNaN(cheeseEighthPrice) ? null : cheeseEighthPrice,
+                    cheeseQuarterPrice: isNaN(cheeseQuarterPrice) ? null : cheeseQuarterPrice,
+                    cheeseHalfPrice: isNaN(cheeseHalfPrice) ? null : cheeseHalfPrice,
+                    cheeseKiloPrice: isNaN(cheeseKiloPrice) ? null : cheeseKiloPrice,
                     halfWholesalePrice: isNaN(halfWholesalePrice) ? null : halfWholesalePrice,
                     halfWholesaleQty: isNaN(halfWholesaleQty) || halfWholesaleQty < 1 ? null : halfWholesaleQty,
                     wholesalePrice: isNaN(wholesalePrice) ? null : wholesalePrice,
@@ -4583,6 +5168,13 @@
         document.getElementById('edit-prod-id').value = p.id;
         document.getElementById('p-name').value = p.name;
         document.getElementById('p-price').value = p.price ?? '';
+        document.getElementById('p-size-small-price').value = p.sizeSmallPrice ?? '';
+        document.getElementById('p-size-medium-price').value = p.sizeMediumPrice ?? '';
+        document.getElementById('p-size-large-price').value = p.sizeLargePrice ?? '';
+        document.getElementById('p-cheese-eighth').value = p.cheeseEighthPrice ?? '';
+        document.getElementById('p-cheese-quarter').value = p.cheeseQuarterPrice ?? '';
+        document.getElementById('p-cheese-half').value = p.cheeseHalfPrice ?? '';
+        document.getElementById('p-cheese-kilo').value = p.cheeseKiloPrice ?? '';
         document.getElementById('p-half-wholesale').value = p.halfWholesalePrice ?? '';
         document.getElementById('p-half-wholesale-qty').value = p.halfWholesaleQty ?? '';
         document.getElementById('p-wholesale').value = p.wholesalePrice ?? '';
@@ -4632,6 +5224,13 @@
         document.getElementById('edit-prod-id').value = '';
         document.getElementById('p-name').value = '';
         document.getElementById('p-price').value = '';
+        document.getElementById('p-size-small-price').value = '';
+        document.getElementById('p-size-medium-price').value = '';
+        document.getElementById('p-size-large-price').value = '';
+        document.getElementById('p-cheese-eighth').value = '';
+        document.getElementById('p-cheese-quarter').value = '';
+        document.getElementById('p-cheese-half').value = '';
+        document.getElementById('p-cheese-kilo').value = '';
         document.getElementById('p-half-wholesale').value = '';
         document.getElementById('p-half-wholesale-qty').value = '';
         document.getElementById('p-wholesale').value = '';
