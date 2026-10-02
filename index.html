@@ -2471,6 +2471,24 @@
                 step="1"
             >
 
+            <div style="margin:8px 0 14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;">
+                <div style="font-weight:800;margin-bottom:8px;">🎁 عروض المنتج</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                    اكتب أي عروض تريدها مثل: 3 قطع بـ 50 ج.م، 6 قطع بـ 90 ج.م. يمكن إضافة أكثر من عرض.
+                </div>
+                <div id="product-offers-box"></div>
+                <button type="button" onclick="addOfferRow()" style="margin-top:8px;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;">+ إضافة عرض آخر</button>
+            </div>
+
+            <div style="margin:8px 0 14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;">
+                <div style="font-weight:800;margin-bottom:8px;">📦 حالة المنتج</div>
+                <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;">
+                    <input type="checkbox" id="p-out-of-stock" onchange="toggleOutOfStockMessage()">
+                    المنتج خلص حاليًا
+                </label>
+                <input type="text" id="p-out-of-stock-message" class="form-control" placeholder="الرسالة التي تظهر للعميل (مثال: المنتج خلص حاليًا وسيتوفر قريبًا)" style="display:none;margin-top:8px;">
+            </div>
+
             <div style="margin-bottom:14px;">
                 <label for="p-img-file" style="display:block;margin-bottom:8px;font-weight:800;">📷 صورة المنتج</label>
                 <input
@@ -3247,6 +3265,9 @@
         // المنتجات القديمة التي كانت تحمل حجمًا في حقل size لا تُجبر على إظهار الحجم.
         // الأحجام الآن تظهر فقط إذا اختار المدير "بالأحجام".
         products.forEach(function(p) {
+            if (p && !Array.isArray(p.offers)) p.offers = [];
+            if (p && typeof p.outOfStock !== 'boolean') p.outOfStock = false;
+            if (p && !p.outOfStockMessage) p.outOfStockMessage = 'المنتج خلص حاليًا.';
             if (p && !p.saleMode) {
                 if (isCheeseProduct(p)) p.saleMode = 'weight';
                 else if ([p.sizeSmallPrice, p.sizeMediumPrice, p.sizeLargePrice].some(isValidProductPrice)) p.saleMode = 'size';
@@ -3932,10 +3953,13 @@
 
             const safeName = String(p.name || '').replace(/"/g, '&quot;');
             const safeImg = String(getProductImage(p) || 'https://via.placeholder.com/150').replace(/"/g, '&quot;');
+            const isOutOfStock = !!p.outOfStock;
+            const productOffers = normalizeProductOffers(p);
 
             return `
                 <div
                     class="product-card"
+                    style="position:relative;"
                     id="product-card-${p.id}"
                     onclick="openProductDetails(${p.id})"
                     role="button"
@@ -3948,6 +3972,10 @@
                         alt="${safeName}"
                         onerror="this.onerror=null; this.src=getAutomaticProductImage({id:'fallback',name:'منتج غذائي',category:'food-products'});"
                     >
+
+                    ${isOutOfStock ? `
+                        <div style="position:absolute;top:10px;right:10px;z-index:3;background:#b91c1c;color:#fff;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,.15);">🚫 خلص</div>
+                    ` : ''}
 
                     <div>
                         <div class="product-category">
@@ -3974,16 +4002,36 @@
                     <div class="product-footer">
                         <div class="${hasSelectablePrice ? 'price' : 'product-price-missing'}">
                             ${
-                                getProductDetailGroups(p).length
-                                    ? 'حسب الأحجام'
-                                    : hasPrice
-                                        ? (isWeightBasedCheese(p) ? `${Number(p.price)} ج.م/كجم` : `${Number(p.price)} ج.م`)
-                                        : 'السعر غير محدد'
+                                isOutOfStock
+                                    ? 'غير متوفر حاليًا'
+                                    : getProductDetailGroups(p).length
+                                        ? 'حسب الأحجام'
+                                        : getWeightOptions(p).length
+                                            ? 'حسب الوزن'
+                                            : hasPrice
+                                                ? `${Number(p.price)} ج.م`
+                                                : 'السعر غير محدد'
                             }
                         </div>
+                        ${productOffers.length && !isOutOfStock ? `
+                            <div style="margin-top:5px;color:#7c3aed;font-size:12px;font-weight:800;">🎁 ${productOffers.map(o => `${o.qty} بـ ${o.price} ج.م`).join(' • ')}</div>
+                        ` : ''}
 
                         ${
-                            hasSelectablePrice
+                            isOutOfStock
+                            ? `
+                                <button
+                                    class="btn-add-item"
+                                    disabled
+                                    onclick="event.stopPropagation()"
+                                    style="opacity:.55;cursor:not-allowed;background:#b91c1c;"
+                                    aria-label="${safeName} غير متوفر"
+                                    title="${String(p.outOfStockMessage || 'المنتج خلص حاليًا').replace(/"/g, '&quot;')}"
+                                >
+                                    ✕
+                                </button>
+                            `
+                            : hasSelectablePrice
                             ? (
                                 getProductDetailGroups(p).length || getWeightOptions(p).length
                                 ? `
@@ -4258,6 +4306,21 @@ function getProductSaleMode(product) {
         const sizeOptions = getProductDetailGroups(product);
         const milkOptions = getMilkSalesOptions(product);
         const weightOptions = getWeightOptions(product);
+        const productOffers = normalizeProductOffers(product);
+
+        if (product.outOfStock) {
+            optionsBox.innerHTML = `
+                <div style="padding:16px;border-radius:12px;background:#fef2f2;color:#991b1b;text-align:center;font-weight:800;">
+                    🚫 ${escapeProductText(product.outOfStockMessage || 'المنتج خلص حاليًا')}
+                </div>
+                ${productOffers.length ? `<div style="margin-top:10px;color:#7c3aed;font-weight:800;text-align:center;">🎁 العروض محفوظة وستظهر عند توفر المنتج.</div>` : ''}
+            `;
+            addBtn.disabled = true;
+            note.textContent = 'هذا المنتج غير متوفر حاليًا.';
+            overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            return;
+        }
 
         let html = '';
         let firstSelectable = null;
@@ -4360,6 +4423,14 @@ function getProductSaleMode(product) {
             if (isValidProductPrice(product.price)) {
                 firstSelectable = { type: 'single', option: { price: Number(product.price), productId: product.id } };
             }
+        }
+
+        if (productOffers.length) {
+            html += `
+                <div style="margin-top:12px;padding:10px;border-radius:10px;background:#faf5ff;color:#6b21a8;font-size:13px;font-weight:800;">
+                    🎁 العروض: ${productOffers.map(o => `${o.qty} قطع بـ ${o.price} ج.م`).join(' • ')}
+                </div>
+            `;
         }
 
         optionsBox.innerHTML = html;
@@ -4532,6 +4603,11 @@ function getProductSaleMode(product) {
         const prod = products.find(p => p.id === id);
         if (!prod) return;
 
+        if (prod.outOfStock) {
+            alert(prod.outOfStockMessage || 'المنتج خلص حاليًا.');
+            return;
+        }
+
         const finalPrice =
             customPrice !== null && customPrice !== undefined
                 ? Number(customPrice)
@@ -4658,7 +4734,8 @@ function getProductSaleMode(product) {
         let subtotal = 0;
         cart.forEach((item, index) => {
             const quantity = Number(item.quantity || 1);
-            const lineTotal = Number(item.price) * quantity;
+            const pricing = getCartPricing(item);
+            const lineTotal = pricing.total;
             subtotal += lineTotal;
 
             tbody.innerHTML += `
@@ -4667,7 +4744,10 @@ function getProductSaleMode(product) {
                         <strong>${item.name}</strong>
                         ${item.cartLabel ? `<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">${item.cartLabel}</div>` : ''}
                     </td>
-                    <td>${item.price} ج.م</td>
+                    <td>
+                        ${pricing.unit.toFixed(2)} ج.م
+                        ${pricing.total < Number(item.price || 0) * quantity ? `<div style="font-size:11px;color:#7c3aed;font-weight:800;margin-top:3px;">🎁 تم تطبيق العرض</div>` : ''}
+                    </td>
                     <td>
                         <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
                             <button type="button" onclick="changeCartQuantity(${index}, 1)" style="width:32px;height:32px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:900;cursor:pointer;">+</button>
@@ -4740,7 +4820,7 @@ function getProductSaleMode(product) {
             localStorage.setItem('salama_user_name', currentUserName);
         }
 
-        const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity || 1)), 0);
+        const subtotal = cart.reduce((sum, item) => sum + getCartPricing(item).total, 0);
         const delivery = subtotal < 100 ? 5 : 0;
         const total = subtotal + delivery;
         const orderDetails = cart.map(i => { const qty = Number(i.quantity || 1); return `${i.name}${i.cartLabel ? ` (${i.cartLabel})` : ''} × ${qty}`; }).join(' ، ');
@@ -4983,6 +5063,112 @@ function getProductSaleMode(product) {
 
     /* ================= إدارة المنتجات ================= */
 
+    function normalizeProductOffers(product) {
+        if (!product || !Array.isArray(product.offers)) return [];
+        return product.offers
+            .map(function(offer) {
+                const qty = Number(offer && (offer.qty ?? offer.quantity));
+                const price = Number(offer && (offer.price ?? offer.totalPrice));
+                return { qty, price };
+            })
+            .filter(function(offer) {
+                return Number.isFinite(offer.qty) && offer.qty >= 2 &&
+                       Number.isFinite(offer.price) && offer.price >= 0;
+            })
+            .sort(function(a, b) { return a.qty - b.qty; });
+    }
+
+    function getOfferPriceForQuantity(product, quantity) {
+        const qty = Math.max(0, Number(quantity || 0));
+        if (!product || qty <= 0) return 0;
+        const base = isValidProductPrice(product.price) ? Number(product.price) : Infinity;
+        const offers = normalizeProductOffers(product);
+        if (!offers.length) return Number.isFinite(base) ? base * qty : Infinity;
+
+        // أفضل تقسيم للسعر: عروض كاملة + قطع فردية بالسعر العادي.
+        const dp = new Array(qty + 1).fill(Infinity);
+        dp[0] = 0;
+        for (let i = 1; i <= qty; i++) {
+            if (Number.isFinite(base)) dp[i] = Math.min(dp[i], dp[i - 1] + base);
+            offers.forEach(function(offer) {
+                if (i >= offer.qty && Number.isFinite(dp[i - offer.qty])) {
+                    dp[i] = Math.min(dp[i], dp[i - offer.qty] + offer.price);
+                }
+            });
+        }
+        return dp[qty];
+    }
+
+    function getCartPricing(item) {
+        const quantity = Math.max(1, Number(item.quantity || 1));
+        const total = getOfferPriceForQuantity(item, quantity);
+        if (!Number.isFinite(total)) {
+            return { total: Number(item.price || 0) * quantity, unit: Number(item.price || 0), offerApplied: null };
+        }
+        const unit = total / quantity;
+        const offers = normalizeProductOffers(item);
+        let best = null;
+        if (offers.length && total < Number(item.price || Infinity) * quantity) {
+            best = offers[offers.length - 1];
+        }
+        return { total, unit, offerApplied: best };
+    }
+
+    function renderOfferRows(offers) {
+        const box = document.getElementById('product-offers-box');
+        if (!box) return;
+        const list = Array.isArray(offers) ? offers : [];
+        box.innerHTML = list.map(function(offer, index) {
+            return `
+                <div class="product-offer-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
+                    <input type="number" class="form-control offer-qty" min="2" step="1" placeholder="عدد القطع (مثال: 3)" value="${Number(offer?.qty || '') || ''}">
+                    <input type="number" class="form-control offer-price" min="0" step="0.01" placeholder="سعر العرض كله" value="${Number.isFinite(Number(offer?.price)) ? Number(offer.price) : ''}">
+                    <button type="button" onclick="removeOfferRow(this)" style="border:0;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:9px 11px;font-weight:800;cursor:pointer;">حذف</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function addOfferRow(offer = null) {
+        const box = document.getElementById('product-offers-box');
+        if (!box) return;
+        const div = document.createElement('div');
+        div.className = 'product-offer-row';
+        div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
+        div.innerHTML = `
+            <input type="number" class="form-control offer-qty" min="2" step="1" placeholder="عدد القطع (مثال: 3)" value="${Number(offer?.qty || '') || ''}">
+            <input type="number" class="form-control offer-price" min="0" step="0.01" placeholder="سعر العرض كله" value="${Number.isFinite(Number(offer?.price)) ? Number(offer.price) : ''}">
+            <button type="button" onclick="removeOfferRow(this)" style="border:0;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:9px 11px;font-weight:800;cursor:pointer;">حذف</button>
+        `;
+        box.appendChild(div);
+    }
+
+    function removeOfferRow(button) {
+        const row = button && button.closest ? button.closest('.product-offer-row') : null;
+        if (row) row.remove();
+    }
+
+    function readOfferRows() {
+        return Array.from(document.querySelectorAll('#product-offers-box .product-offer-row'))
+            .map(function(row) {
+                return {
+                    qty: parseInt(row.querySelector('.offer-qty')?.value || '', 10),
+                    price: parseFloat(row.querySelector('.offer-price')?.value || '')
+                };
+            })
+            .filter(function(offer) {
+                return Number.isFinite(offer.qty) && offer.qty >= 2 &&
+                       Number.isFinite(offer.price) && offer.price >= 0;
+            })
+            .sort(function(a, b) { return a.qty - b.qty; });
+    }
+
+    function toggleOutOfStockMessage() {
+        const check = document.getElementById('p-out-of-stock');
+        const input = document.getElementById('p-out-of-stock-message');
+        if (input) input.style.display = check && check.checked ? 'block' : 'none';
+    }
+
     function renderAdminProducts() {
         const tbody = document.getElementById('admin-products-list');
         tbody.innerHTML = '';
@@ -5015,6 +5201,8 @@ function getProductSaleMode(product) {
                         ${Number(p.halfWholesaleQty || 0) <= 0 && Number(p.wholesaleQty || 0) <= 0 ? '—' : ''}
                     </td>
                     <td>
+                        ${p.outOfStock ? `<div style="color:#b91c1c;font-weight:900;margin-bottom:6px;">🚫 خلص${p.outOfStockMessage ? ` — ${p.outOfStockMessage}` : ''}</div>` : '<div style="color:#15803d;font-weight:800;margin-bottom:6px;">✅ متوفر</div>'}
+                        ${normalizeProductOffers(p).length ? `<div style="font-size:11px;color:#7c3aed;">🎁 ${normalizeProductOffers(p).map(o => `${o.qty} بـ ${o.price} ج.م`).join(' | ')}</div>` : ''}
                         <button onclick="editProduct(${p.id})" style="color:blue;border:none;background:none;cursor:pointer;margin-left:10px;font-weight:bold;">تعديل</button>
                         <button onclick="deleteProduct(${p.id})" style="color:red;border:none;background:none;cursor:pointer;font-weight:bold;">حذف</button>
                     </td>
@@ -5209,6 +5397,10 @@ function getProductSaleMode(product) {
         const category = document.getElementById('p-cat').value;
         const saleModeEl = document.getElementById('p-sale-mode');
         const saleMode = saleModeEl ? saleModeEl.value : 'single';
+        const offers = readOfferRows();
+        const outOfStockEl = document.getElementById('p-out-of-stock');
+        const outOfStock = !!(outOfStockEl && outOfStockEl.checked);
+        const outOfStockMessage = (document.getElementById('p-out-of-stock-message')?.value || '').trim() || 'المنتج خلص حاليًا.';
         const saveButton = document.getElementById('save-prod-btn');
 
         const hasAnyWeightPrice = [cheeseEighthPrice, cheeseQuarterPrice, cheeseHalfPrice, cheeseKiloPrice]
@@ -5271,7 +5463,10 @@ function getProductSaleMode(product) {
                     wholesaleQty: isNaN(wholesaleQty) || wholesaleQty < 1 ? null : wholesaleQty,
                     category: category,
                     img: img,
-                    size: '', 
+                    size: '',
+                    offers: offers,
+                    outOfStock: outOfStock,
+                    outOfStockMessage: outOfStockMessage,
                     subcategory: products[index].subcategory || ''
                 };
             } else {
@@ -5292,7 +5487,10 @@ function getProductSaleMode(product) {
                     wholesalePrice: isNaN(wholesalePrice) ? null : wholesalePrice,
                     wholesaleQty: isNaN(wholesaleQty) || wholesaleQty < 1 ? null : wholesaleQty,
                     category: category,
-                    img: img
+                    img: img,
+                    offers: offers,
+                    outOfStock: outOfStock,
+                    outOfStockMessage: outOfStockMessage
                 });
             }
 
@@ -5370,6 +5568,12 @@ function getProductSaleMode(product) {
         document.getElementById('p-half-wholesale-qty').value = p.halfWholesaleQty ?? '';
         document.getElementById('p-wholesale').value = p.wholesalePrice ?? '';
         document.getElementById('p-wholesale-qty').value = p.wholesaleQty ?? '';
+        renderOfferRows(normalizeProductOffers(p));
+        const outOfStockEl = document.getElementById('p-out-of-stock');
+        if (outOfStockEl) outOfStockEl.checked = !!p.outOfStock;
+        const outOfStockMessageEl = document.getElementById('p-out-of-stock-message');
+        if (outOfStockMessageEl) outOfStockMessageEl.value = p.outOfStockMessage || '';
+        toggleOutOfStockMessage();
 
         const editImageFile = document.getElementById('p-img-file');
         if (editImageFile) editImageFile.value = '';
@@ -5429,6 +5633,13 @@ function getProductSaleMode(product) {
         document.getElementById('p-half-wholesale-qty').value = '';
         document.getElementById('p-wholesale').value = '';
         document.getElementById('p-wholesale-qty').value = '';
+        renderOfferRows([]);
+        addOfferRow();
+        const resetOutOfStock = document.getElementById('p-out-of-stock');
+        if (resetOutOfStock) resetOutOfStock.checked = false;
+        const resetOutOfStockMessage = document.getElementById('p-out-of-stock-message');
+        if (resetOutOfStockMessage) resetOutOfStockMessage.value = '';
+        toggleOutOfStockMessage();
 
         const resetImageFile = document.getElementById('p-img-file');
         if (resetImageFile) resetImageFile.value = '';
@@ -6308,6 +6519,10 @@ function getProductSaleMode(product) {
         mergeBuiltInProducts();
         renderProducts();
         updateCartCount();
+        if (document.getElementById('product-offers-box') && !document.querySelector('#product-offers-box .product-offer-row')) {
+            addOfferRow();
+        }
+        toggleOutOfStockMessage();
         startCloudSync();
 
         initializeCustomerChatNotifications();
