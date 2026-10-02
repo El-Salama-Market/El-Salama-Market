@@ -2480,15 +2480,6 @@
                 <button type="button" onclick="addOfferRow()" style="margin-top:8px;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;padding:8px 12px;font-weight:800;cursor:pointer;">+ إضافة عرض آخر</button>
             </div>
 
-            <div style="margin:8px 0 14px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;">
-                <div style="font-weight:800;margin-bottom:8px;">📦 حالة المنتج</div>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer;">
-                    <input type="checkbox" id="p-out-of-stock" onchange="toggleOutOfStockMessage()">
-                    المنتج خلص حاليًا
-                </label>
-                <input type="text" id="p-out-of-stock-message" class="form-control" placeholder="الرسالة التي تظهر للعميل (مثال: المنتج خلص حاليًا وسيتوفر قريبًا)" style="display:none;margin-top:8px;">
-            </div>
-
             <div style="margin-bottom:14px;">
                 <label for="p-img-file" style="display:block;margin-bottom:8px;font-weight:800;">📷 صورة المنتج</label>
                 <input
@@ -2588,6 +2579,17 @@
             <h3 style="margin-top:25px;">
                 ✏️ قائمة المنتجات والأسعار الحالية
             </h3>
+
+            <div style="margin:12px 0 14px;">
+                <input
+                    type="search"
+                    id="admin-product-search"
+                    class="form-control"
+                    placeholder="🔎 ابحث باسم المنتج للتعديل السريع..."
+                    oninput="renderAdminProducts()"
+                    autocomplete="off"
+                >
+            </div>
 
             <table>
 
@@ -5163,17 +5165,50 @@ function getProductSaleMode(product) {
             .sort(function(a, b) { return a.qty - b.qty; });
     }
 
-    function toggleOutOfStockMessage() {
-        const check = document.getElementById('p-out-of-stock');
-        const input = document.getElementById('p-out-of-stock-message');
-        if (input) input.style.display = check && check.checked ? 'block' : 'none';
+    async function toggleProductAvailability(id) {
+        if (!cloudReady) {
+            alert('الموقع غير متصل بقاعدة البيانات.');
+            return;
+        }
+
+        const index = products.findIndex(p => p.id == id);
+        if (index === -1) return;
+
+        const oldValue = !!products[index].outOfStock;
+        products[index].outOfStock = !oldValue;
+        if (!products[index].outOfStock) {
+            products[index].outOfStockMessage = products[index].outOfStockMessage || 'المنتج متوفر حاليًا.';
+        }
+
+        try {
+            await saveData();
+            renderAdminProducts();
+            renderProducts();
+        } catch (error) {
+            products[index].outOfStock = oldValue;
+            console.error('Toggle product availability error:', error);
+            alert('فشل حفظ حالة توفر المنتج.');
+            await refreshCloudData();
+        }
     }
 
     function renderAdminProducts() {
         const tbody = document.getElementById('admin-products-list');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
-        products.forEach(p => {
+        const searchInput = document.getElementById('admin-product-search');
+        const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const filteredProducts = searchTerm
+            ? products.filter(p => String(p.name || '').toLowerCase().includes(searchTerm))
+            : products;
+
+        if (!filteredProducts.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);font-weight:700;">لا يوجد منتج بهذا الاسم.</td></tr>';
+            return;
+        }
+
+        filteredProducts.forEach(p => {
             tbody.innerHTML += `
                 <tr>
                     <td>
@@ -5201,7 +5236,8 @@ function getProductSaleMode(product) {
                         ${Number(p.halfWholesaleQty || 0) <= 0 && Number(p.wholesaleQty || 0) <= 0 ? '—' : ''}
                     </td>
                     <td>
-                        ${p.outOfStock ? `<div style="color:#b91c1c;font-weight:900;margin-bottom:6px;">🚫 خلص${p.outOfStockMessage ? ` — ${p.outOfStockMessage}` : ''}</div>` : '<div style="color:#15803d;font-weight:800;margin-bottom:6px;">✅ متوفر</div>'}
+                        <button type="button" onclick="toggleProductAvailability(${p.id})" style="border:1px solid ${p.outOfStock ? '#dc2626' : '#16a34a'};background:${p.outOfStock ? '#fee2e2' : '#dcfce7'};color:${p.outOfStock ? '#b91c1c' : '#166534'};border-radius:9px;padding:7px 12px;font-weight:900;cursor:pointer;margin-bottom:6px;">${p.outOfStock ? '✕ غير متوفر' : '✓ متوفر'}</button>
+                        ${p.outOfStock && p.outOfStockMessage ? `<div style="font-size:11px;color:#b91c1c;margin-bottom:6px;">${p.outOfStockMessage}</div>` : ''}
                         ${normalizeProductOffers(p).length ? `<div style="font-size:11px;color:#7c3aed;">🎁 ${normalizeProductOffers(p).map(o => `${o.qty} بـ ${o.price} ج.م`).join(' | ')}</div>` : ''}
                         <button onclick="editProduct(${p.id})" style="color:blue;border:none;background:none;cursor:pointer;margin-left:10px;font-weight:bold;">تعديل</button>
                         <button onclick="deleteProduct(${p.id})" style="color:red;border:none;background:none;cursor:pointer;font-weight:bold;">حذف</button>
@@ -5398,9 +5434,9 @@ function getProductSaleMode(product) {
         const saleModeEl = document.getElementById('p-sale-mode');
         const saleMode = saleModeEl ? saleModeEl.value : 'single';
         const offers = readOfferRows();
-        const outOfStockEl = document.getElementById('p-out-of-stock');
-        const outOfStock = !!(outOfStockEl && outOfStockEl.checked);
-        const outOfStockMessage = (document.getElementById('p-out-of-stock-message')?.value || '').trim() || 'المنتج خلص حاليًا.';
+        const existingProduct = id ? products.find(p => String(p.id) === String(id)) : null;
+        const outOfStock = existingProduct ? !!existingProduct.outOfStock : false;
+        const outOfStockMessage = existingProduct?.outOfStockMessage || 'المنتج خلص حاليًا.';
         const saveButton = document.getElementById('save-prod-btn');
 
         const hasAnyWeightPrice = [cheeseEighthPrice, cheeseQuarterPrice, cheeseHalfPrice, cheeseKiloPrice]
@@ -5569,12 +5605,6 @@ function getProductSaleMode(product) {
         document.getElementById('p-wholesale').value = p.wholesalePrice ?? '';
         document.getElementById('p-wholesale-qty').value = p.wholesaleQty ?? '';
         renderOfferRows(normalizeProductOffers(p));
-        const outOfStockEl = document.getElementById('p-out-of-stock');
-        if (outOfStockEl) outOfStockEl.checked = !!p.outOfStock;
-        const outOfStockMessageEl = document.getElementById('p-out-of-stock-message');
-        if (outOfStockMessageEl) outOfStockMessageEl.value = p.outOfStockMessage || '';
-        toggleOutOfStockMessage();
-
         const editImageFile = document.getElementById('p-img-file');
         if (editImageFile) editImageFile.value = '';
         const editPreviewBox = document.getElementById('product-image-preview-box');
@@ -5635,12 +5665,6 @@ function getProductSaleMode(product) {
         document.getElementById('p-wholesale-qty').value = '';
         renderOfferRows([]);
         addOfferRow();
-        const resetOutOfStock = document.getElementById('p-out-of-stock');
-        if (resetOutOfStock) resetOutOfStock.checked = false;
-        const resetOutOfStockMessage = document.getElementById('p-out-of-stock-message');
-        if (resetOutOfStockMessage) resetOutOfStockMessage.value = '';
-        toggleOutOfStockMessage();
-
         const resetImageFile = document.getElementById('p-img-file');
         if (resetImageFile) resetImageFile.value = '';
         const resetPreviewBox = document.getElementById('product-image-preview-box');
@@ -6522,7 +6546,6 @@ function getProductSaleMode(product) {
         if (document.getElementById('product-offers-box') && !document.querySelector('#product-offers-box .product-offer-row')) {
             addOfferRow();
         }
-        toggleOutOfStockMessage();
         startCloudSync();
 
         initializeCustomerChatNotifications();
